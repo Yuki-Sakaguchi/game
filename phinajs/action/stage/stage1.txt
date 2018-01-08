@@ -1,0 +1,35 @@
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+B                  B                   B
+B                  B                   B
+B         BBBBBBBBBB                   B
+B                  B                   B
+B    B                                 B
+B                                      B
+B                  BBBBBB     BBBBBBB  B
+B      B           BBBBBB    BBBBBBBB  B
+B                  BBBB     BBBBBBBBB  B
+B  B              BBBB     BBBBBBBBBB  B
+B                BBBBBB     BBBBBBBBB  B
+BB    BBBBBB    BBBBBBBBB    BBBBBBBB  B
+B              BBBBBBBBBB    BBBBBBBB  B
+B       BBBBBBBBBBBBBBBBBB       BBBB  B
+BB      BBBBBBBBBBBBBBBBBBBB     BBBB  B
+BBB                         BBB        B
+BBBB                           B       B
+BBBBB     BBBBBBBBBB     B     BB      B
+B         BBBBBBBBBBB     B    BBB     B
+B     BB   BBBBBBBBBBB    B    BBBB    B
+BB            BBBBBBB       B  BBBBB   B
+BBB   BBB      BBBBBBBB   B    BBBBBB  B
+BBB                                    B
+B       BBBBBBBBBBBBBBBBBB     BBBBBB  B
+BB      BBBBBBBBBBBBBBBBB      BBBBBB  B
+BBB                           BBBBBBB  B
+BBBB                           BBBBBB  B
+BBBBB     BBBBBBBBBB     B     BBBBBB  B
+B         BBBBBBBBBBB     B    BBBBBB  B
+B     BB   BBBBBBBBBBB    B    BBBBBB  B
+BB            BBBBBBB       B  BBBBBB  B
+BBB   BBB      BBBBBBBB   B    BBBBBB  B
+BBB                                    B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
