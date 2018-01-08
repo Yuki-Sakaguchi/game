@@ -19,29 +19,14 @@ var DIRECTION = {
 
 var ASSETS = {
   text: {
-    stage1: 'stage/stage1.txt',
-    stage2: 'stage/stage2.txt',
-    stage3: 'stage/stage3.txt',
+    stage1:     'stage/stage1.txt',
+    stage1_evt: 'event/stage1.txt',
+    stage2:     'stage/stage2.txt',
+    stage2_evt: 'event/stage2.txt',
+    stage3:     'stage/stage3.txt',
+    stage3_evt: 'event/stage3.txt',
   }
 };
-
-var DOOR_DATA = {
-  stage1: {
-    nextName: 'stage2',
-    nextX: 100, 
-    nextY: 100,
-  },
-  stage2: {
-    nextName: 'stage3',
-    nextX: 100, 
-    nextY: 100,
-  },
-  stage3: {
-    nextName: 'stage1',
-    nextX: 100, 
-    nextY: 100,
-  },
-}
 
 
 // ====================================
@@ -67,7 +52,7 @@ phina.define('MainScene', {
 
     // マップ生成
     this.map = Map(this.stageGroup, this.eventGroup);
-    this.map.loading('text', 'stage1', this.player, 100, 100);
+    this.map.loading('text', 'stage1', 'stage1_evt', this.player, 100, 100);
   },
 
   /**
@@ -275,12 +260,12 @@ phina.define('Player', {
    * イベント処理
    */
   hit: function(event, map) {
-    if (this.key.getKey('up')) {
+    if (this.key.getKeyDown('up')) {
       if (event.className == 'Door') {
         this.vx = 0;
         this.vy = 0;
         map.removes();
-        map.loading('text', event.nextMap, this, event.nextX, event.nextY);
+        map.loading('text', event.nextMap, event.nextEvent, this, event.nextX, event.nextY);
       }
     }
   }
@@ -309,7 +294,8 @@ phina.define('Map', {
   /**
    * マップのローディング
    */
-  loading: function(text, stage, player, nextX, nextY) {
+  loading: function(text, stage, event, player, nextX, nextY) {
+    // ステージの作成
     this.text = AssetManager.get(text, stage).data;
     var ary = this.text.split('\n');
     var map = [];
@@ -324,17 +310,36 @@ phina.define('Map', {
         if (map[i][j] === 'B') {
           Block(j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
         }
-        if (map[i][j] === 'D') {
-          Door(j * BOX_SIZE, i * BOX_SIZE, DOOR_DATA[stage].nextName, DOOR_DATA[stage].nextX, DOOR_DATA[stage].nextY).addChildTo(this.eventGroup);
-        }
       }
     }
 
-    this.mapWidth = map[0].length * BOX_SIZE;
-    this.mapHeight = map.length * BOX_SIZE;
+    // イベントの作成
+    this.event = AssetManager.get(text, event).data;
+    var tmpEvent = this.event.split('\n');
+    var event = [];
+
+    for (var i = 0, len = tmpEvent.length; i < len; i++) {
+      event.push(tmpEvent[i].split(','));
+    }
+
+    for (var i = 0, len = event.length; i < len; i++) {
+      if (event[i][0] === 'Door') {
+        // Doorイベントの場合ドアを作成
+        var tmpX = Number(event[i][1]);
+        var tmpY = Number(event[i][2]);
+        var tmpNextMap = event[i][3];
+        var tmpNextEvent = event[i][4];
+        var tmpNextX = Number(event[i][5]);
+        var tmpNextY = Number(event[i][6]);
+        Door(tmpX, tmpY, tmpNextMap, tmpNextEvent, tmpNextX, tmpNextY).addChildTo(this.eventGroup);
+      }
+    }
 
     this.absdisX = 0;
     this.absdisY = 0;
+
+    this.mapWidth = map[0].length * BOX_SIZE;
+    this.mapHeight = map.length * BOX_SIZE;
 
     player.x = nextX;
     player.y = nextY;
@@ -437,7 +442,7 @@ phina.define('Door', {
   /**
    * 初期化
    */
-  init: function(x, y, nextMap, nextX, nextY) {
+  init: function(x, y, nextMap, nextEvent, nextX, nextY) {
     this.superInit({
       width: BOX_SIZE,
       height: BOX_SIZE * 2,
@@ -448,6 +453,7 @@ phina.define('Door', {
     });
     this.className = 'Door';
     this.nextMap = nextMap;
+    this.nextEvent = nextEvent;
     this.nextX = nextX;
     this.nextY = nextY;
   }

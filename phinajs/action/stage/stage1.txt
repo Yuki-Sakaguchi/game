@@ -30,6 +30,6 @@ BBBBB     BBBBBBBBBB     B     BBBBBB  B
 B         BBBBBBBBBBB     B    BBBBBB  B
 B     BB   BBBBBBBBBBB    B    BBBBB   B
 BB            BBBBBBB       B  BBBB    B
-BBB   BBB      BBBBBBBB   B    BB      B
-BBB                                  D B
+BBB     B      BBBBBBBB   B    BB      B
+BBB                                    B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB

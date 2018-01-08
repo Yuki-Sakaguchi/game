@@ -1,0 +1,2 @@
+Door,100,382,stage1,stage1_evt,1088,192
+Door,2200,382,stage3,stage3_evt,100,100

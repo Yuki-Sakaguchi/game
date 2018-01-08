@@ -10,5 +10,5 @@ B                                                BB                         B
 B                       BBBBBB                   BB                         B
 B                                                BB                         B
 B                 BB                             BB                         B
-B               BBBBBB                           BB                  D      B
+B               BBBBBB                           BB                         B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
