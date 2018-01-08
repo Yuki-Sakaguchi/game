@@ -20,8 +20,28 @@ var DIRECTION = {
 var ASSETS = {
   text: {
     stage1: 'stage/stage1.txt',
+    stage2: 'stage/stage2.txt',
+    stage3: 'stage/stage3.txt',
   }
 };
+
+var DOOR_DATA = {
+  stage1: {
+    nextName: 'stage2',
+    nextX: 100, 
+    nextY: 100,
+  },
+  stage2: {
+    nextName: 'stage3',
+    nextX: 100, 
+    nextY: 100,
+  },
+  stage3: {
+    nextName: 'stage1',
+    nextX: 100, 
+    nextY: 100,
+  },
+}
 
 
 // ====================================
@@ -37,21 +57,27 @@ phina.define('MainScene', {
     this.superInit();
     this.backgroundColor = '#000';
     
-    this.playerGroup = DisplayElement().addChildTo(this);
+    // グループ
+    this.eventGroup = DisplayElement().addChildTo(this);
     this.stageGroup = DisplayElement().addChildTo(this);
+    this.playerGroup = DisplayElement().addChildTo(this);
     
+    // プレイヤー
     this.player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2).addChildTo(this.playerGroup);
-    this.map = Map(this.stageGroup);
-    this.map.loading('text', 'stage1', this.player, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+    // マップ生成
+    this.map = Map(this.stageGroup, this.eventGroup);
+    this.map.loading('text', 'stage1', this.player, 100, 100);
   },
 
   /**
    * 更新
    */
-  update: function() {
+  update: function(app) {
     this.collisionX(this.playerGroup, this.stageGroup);
     this.collisionY(this.playerGroup, this.stageGroup);
-    this.map.move(this.player, this.stageGroup);
+    this.collistionEvent(this.playerGroup, this.eventGroup, this.map);
+    this.map.move(this.player, this.stageGroup, this.eventGroup);
   },
 
   /**
@@ -105,6 +131,19 @@ phina.define('MainScene', {
         }
       });
     });
+  },
+
+  /**
+   * イベントの当たり判定
+   */
+  collistionEvent: function(players, events, map) {
+    players.children.some(function(player) {
+      events.children.some(function(event) {
+        if (Collision.testRectRect(player, event)) {
+          player.hit(event, map);
+        }
+      });
+    });
   }
 });
 
@@ -122,7 +161,7 @@ phina.define('Player', {
     this.superInit({
       width: BOX_SIZE / 2,
       height: BOX_SIZE / 2,
-      fill: '#F0A32F',
+      fill: '#F3A530',
       stroke: null,
       x: x,
       y: y,
@@ -130,7 +169,7 @@ phina.define('Player', {
 
     this.vx = 0;
     this.vy = 0;
-    this.maxVx = 8;
+    this.maxVx = 12;
     this.maxVy = 14;
 
     this.scaleX = 1;
@@ -150,7 +189,7 @@ phina.define('Player', {
    * 更新
    */
   update: function(app) {
-    var key = app.keyboard;
+    this.key = app.keyboard;
 
     // 移動の最高速度を超えさせない
     if (this.vx > this.maxVx) {
@@ -161,7 +200,7 @@ phina.define('Player', {
     }
 
     // 移動していない時、慣性で徐々に止める
-    if (!key.getKey('right') || !key.getKey('left')) {
+    if (!this.key.getKey('right') || !this.key.getKey('left')) {
       if (this.vx > 0) {
         this.vx -= this.speed/2;
       }
@@ -171,29 +210,29 @@ phina.define('Player', {
     }
 
     // 左に移動
-    if (key.getKey('left')) {
+    if (this.key.getKey('left')) {
       this.vx += -this.speed;
       this.direction = DIRECTION.LEFT;
     }
 
     // 右に移動
-    if (key.getKey('right')) {
+    if (this.key.getKey('right')) {
       this.vx += this.speed;
       this.direction = DIRECTION.RIGHT;
     }
 
     // 下を向く
-    if (key.getKey('down')) {
+    if (this.key.getKey('down')) {
       this.direction = DIRECTION.DOWN;
     }
 
     // 上を向く
-    if (key.getKey('up')) {
+    if (this.key.getKey('up')) {
       this.direction = DIRECTION.UP;
     }
 
     // ジャンプ
-    if (key.getKey('space')) {
+    if (this.key.getKey('space')) {
       if (this.jumpCount <= this.maxJumpCount) {
         this.jumpPower++;
         if (this.jumpPower <= this.maxJumpPower) {
@@ -204,7 +243,7 @@ phina.define('Player', {
     }
 
     // ジャンプのカウント
-    if (key.getKeyDown('space')) {
+    if (this.key.getKeyDown('space')) {
       if (this.jumpCount < this.maxJumpCount) {
         this.jumpCount++;
         this.jumpPower = 0;
@@ -230,6 +269,20 @@ phina.define('Player', {
   move: function() {
     this.x += this.vx;
     this.y += this.vy;
+  },
+
+  /**
+   * イベント処理
+   */
+  hit: function(event, map) {
+    if (this.key.getKey('up')) {
+      if (event.className == 'Door') {
+        this.vx = 0;
+        this.vy = 0;
+        map.removes();
+        map.loading('text', event.nextMap, this, event.nextX, event.nextY);
+      }
+    }
   }
 });
 
@@ -243,9 +296,10 @@ phina.define('Map', {
   /**
    * 初期化
    */
-  init: function(group) {
+  init: function(stageGroup, eventGroup) {
     this.superInit();
-    this.group = group;
+    this.stageGroup = stageGroup;
+    this.eventGroup = eventGroup;
     this.mapWidth = null;
     this.mapHeight = null;
     this.absdisX = 0;
@@ -268,13 +322,19 @@ phina.define('Map', {
     for (var i = 0, iLen = map.length; i < iLen; i++) {
       for (var j = 0, jLen = map[i].length; j < jLen; j++) {
         if (map[i][j] === 'B') {
-          Block(j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.group);
+          Block(j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
+        }
+        if (map[i][j] === 'D') {
+          Door(j * BOX_SIZE, i * BOX_SIZE, DOOR_DATA[stage].nextName, DOOR_DATA[stage].nextX, DOOR_DATA[stage].nextY).addChildTo(this.eventGroup);
         }
       }
     }
 
     this.mapWidth = map[0].length * BOX_SIZE;
     this.mapHeight = map.length * BOX_SIZE;
+
+    this.absdisX = 0;
+    this.absdisY = 0;
 
     player.x = nextX;
     player.y = nextY;
@@ -283,7 +343,7 @@ phina.define('Map', {
   /**
    * 移動
    */
-  move: function(player, group) {
+  move: function(player, stageGroup, eventGroup) {
     player.move();
     var offset = this.calcOffset(player);
 
@@ -313,7 +373,13 @@ phina.define('Map', {
     player.y += -offset.vy;
     
     // ステージの位置移動
-    group.children.some(function(block) {
+    stageGroup.children.some(function(block) {
+      block.x += -offset.vx;
+      block.y += -offset.vy;
+    });
+
+    // イベントの位置移動
+    eventGroup.children.some(function(block) {
       block.x += -offset.vx;
       block.y += -offset.vy;
     });
@@ -327,6 +393,14 @@ phina.define('Map', {
       vx: player.x - SCREEN_WIDTH / 2,
       vy: player.y - SCREEN_HEIGHT / 2
     };
+  },
+
+  /**
+   * マップの削除
+   */
+  removes: function() {
+    this.stageGroup.children.clear();
+    this.eventGroup.children.clear();
   }
 });
 
@@ -350,6 +424,32 @@ phina.define('Block', {
       stroke: '#30499B',
       strokeWidth: 0,
     });
+  }
+});
+
+
+// ====================================
+// ドア
+// ====================================
+phina.define('Door', {
+  superClass: 'RectangleShape',
+
+  /**
+   * 初期化
+   */
+  init: function(x, y, nextMap, nextX, nextY) {
+    this.superInit({
+      width: BOX_SIZE,
+      height: BOX_SIZE * 2,
+      fill: '#F9ED3A',
+      stroke: '#F9ED3A',
+      x: x,
+      y: y,
+    });
+    this.className = 'Door';
+    this.nextMap = nextMap;
+    this.nextX = nextX;
+    this.nextY = nextY;
   }
 });
 
