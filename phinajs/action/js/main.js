@@ -44,15 +44,16 @@ phina.define('MainScene', {
     
     // グループ
     this.eventGroup = DisplayElement().addChildTo(this);
+    this.shotGroup = DisplayElement().addChildTo(this);
     this.stageGroup = DisplayElement().addChildTo(this);
     this.playerGroup = DisplayElement().addChildTo(this);
     this.enemyGroup = DisplayElement().addChildTo(this);
     
     // プレイヤー
-    this.player = Player(100, 100).addChildTo(this.playerGroup);
+    this.player = Player(100, 100, this.shotGroup).addChildTo(this.playerGroup);
 
     // マップ生成
-    this.map = Map(this.stageGroup, this.eventGroup, this.enemyGroup);
+    this.map = Map(this.stageGroup, this.eventGroup, this.enemyGroup, this.shotGroup);
     this.map.loading('text', 'stage1', 'stage1_evt', this.player, 100, 100);
   },
 
@@ -60,19 +61,47 @@ phina.define('MainScene', {
    * 更新
    */
   update: function(app) {
-    // プレイヤーと床の判定
+    // プレイヤー判定
     this.collisionX(this.playerGroup, this.stageGroup);
     this.collisionY(this.playerGroup, this.stageGroup);
+    this.collisionEvent(this.playerGroup, this.eventGroup, this.map);
+    this.collisionEnemy(this.playerGroup, this.enemyGroup);
 
-    // 敵と床の判定
+    // 敵の判定
     this.collisionX(this.enemyGroup, this.stageGroup);
     this.collisionY(this.enemyGroup, this.stageGroup);
-
-    // プレイヤーとイベントの判定
-    this.collistionEvent(this.playerGroup, this.eventGroup, this.map);
+    this.collisionShot(this.shotGroup, this.enemyGroup);
 
     // マップの移動
-    this.map.move(this.player, this.stageGroup, this.eventGroup, this.enemyGroup);
+    this.map.move(this.player);
+  },
+
+  /**
+   * 敵とのあたり判定
+   */
+  collisionEnemy: function(players, enemys) {
+    players.children.some(function(player) {
+      enemys.children.some(function(enemy) {
+        if (Collision.testRectRect(player, enemy)) {
+          player.hitEnemy();
+          enemy.hitPlayer();
+        }
+      });
+    });
+  },
+
+  /**
+   * 敵とショットのあたり判定
+   */
+  collisionShot: function(shots, enemys) {
+    shots.children.some(function(shot) {
+      enemys.children.some(function(enemy) {
+        if (Collision.testRectRect(shot, enemy)) {
+          shot.hitEnemy();
+          enemy.hitShot(shot);
+        }
+      })
+    });
   },
 
   /**
@@ -131,7 +160,7 @@ phina.define('MainScene', {
   /**
    * イベントの当たり判定
    */
-  collistionEvent: function(players, events, map) {
+  collisionEvent: function(players, events, map) {
     players.children.some(function(player) {
       events.children.some(function(event) {
         if (Collision.testRectRect(player, event)) {
@@ -152,7 +181,7 @@ phina.define('Player', {
   /**
    * 初期化
    */
-  init: function(x, y) {
+  init: function(x, y, shotGroup) {
     this.superInit({
       width: BOX_SIZE / 2,
       height: BOX_SIZE / 2,
@@ -178,6 +207,15 @@ phina.define('Player', {
     this.maxJumpCount = 2; // ジャンプの最大回数
     this.direction = DIRECTION.LEFT;
     this.onFloor = false;
+
+    // 透明
+    this.alphaTime = 30;
+    this.alphaCount = this.alphaTime;
+
+    // 攻撃
+    this.shotCount = 3;
+    this.shotAngle = 270;
+    this.shotGroup = shotGroup;
   },
 
   /**
@@ -227,6 +265,86 @@ phina.define('Player', {
     }
 
     // ジャンプ
+    this.jump();
+
+    // ダメージを食らった時の半透明
+    if (this.alphaCount < this.alphaTime) {
+      this.alphaCount++;
+      if (this.alphaCount == 1) {
+        // ノックバック
+        if (this.direction == DIRECTION.LEFT) {
+          this.vx += 10;
+        } else {
+          this.vx -= 10;
+        }
+        this.vy -= 10;
+      }
+      this.alpha = 0.5;
+    } else if (this.alphaCount === this.alphaTime) {
+      this.alpha = 1;
+    }
+
+    // ショットを打つ
+    if (this.key.getKey('a')) {
+      this.shotCount++;
+      if (this.shotCount <= 1) {
+        switch (this.direction) {
+          case DIRECTION.RIGHT:
+            this.shotAngle = 0;
+            break;
+          case DIRECTION.UP:
+            this.shotAngle = 90;
+            break;
+          case DIRECTION.DOWN:
+            this.shotAngle = 270;
+            break;
+          case DIRECTION.LEFT:
+            this.shotAngle = 180;
+            break;
+        }
+        Shot(this.x, this.y, this.shotAngle, 30).addChildTo(this.shotGroup);
+      }
+    } else {
+      this.shotCount = 0;
+    }
+  },
+
+  /**
+   * 移動
+   */
+  move: function() {
+    this.x += this.vx;
+    this.y += this.vy;
+  },
+
+  /**
+   * イベント処理
+   */
+  hit: function(event, map) {
+    if (this.key.getKeyDown('up')) {
+      if (event.className == 'Door') {
+        this.vx = 0;
+        this.vy = 0;
+        map.removes();
+        map.loading('text', event.nextMap, event.nextEvent, this, event.nextX, event.nextY);
+      }
+    }
+  },
+
+  /**
+   * 敵とヒット
+   */
+  hitEnemy: function() {
+    if (this.alphaCount === this.alphaTime) {
+      this.alphaCount = 0;
+    }
+  },
+
+  /**
+   * ジャンプ
+   */
+  jump: function() {
+    // ジャンプ
     if (this.key.getKey('space')) {
       if (this.jumpCount <= this.maxJumpCount) {
         this.jumpPower++;
@@ -256,28 +374,62 @@ phina.define('Player', {
       this.jumpCount = 0;
       this.jumpPower = 0;
     }
+  }
+});
+
+
+// ====================================
+// 攻撃
+// ====================================
+phina.define('Shot', {
+  superClass: 'RectangleShape',
+
+  /**
+   * 初期化
+   */
+  init: function(x, y, angle, speed) {
+    this.superInit({
+      fill: 'pink',
+      stroke: null,
+      width: 10,
+      height: 10,
+      x: x,
+      y: y
+    });
+
+    this.power = 3;
+    this.speed = speed;
+    this.angle = (angle).toRadian();
+    this.hp = 1;
   },
 
   /**
-   * 移動
+   * 更新
    */
-  move: function() {
+  update: function(app) {
+    this.vx = this.speed * Math.cos(this.angle);
+    this.vy = -this.speed * Math.sin(this.angle);
+
     this.x += this.vx;
     this.y += this.vy;
+
+    if (this.x < 0 || this.x > SCREEN_WIDTH || this.y < 0 || this.y > SCREEN_HEIGHT) {
+      this.remove();
+    }
   },
 
   /**
-   * イベント処理
+   * 敵との接触
    */
-  hit: function(event, map) {
-    if (this.key.getKeyDown('up')) {
-      if (event.className == 'Door') {
-        this.vx = 0;
-        this.vy = 0;
-        map.removes();
-        map.loading('text', event.nextMap, event.nextEvent, this, event.nextX, event.nextY);
-      }
-    }
+  hitEnemy: function() {
+    this.remove();
+  },
+
+  /**
+   * イベントとの接触
+   */
+  hitEvent: function() {
+    this.remove();
   }
 });
 
@@ -291,11 +443,12 @@ phina.define('Map', {
   /**
    * 初期化
    */
-  init: function(stageGroup, eventGroup, enemyGroup) {
+  init: function(stageGroup, eventGroup, enemyGroup, shotGroup) {
     this.superInit();
     this.stageGroup = stageGroup;
     this.eventGroup = eventGroup;
     this.enemyGroup = enemyGroup;
+    this.shotGroup = shotGroup;
     this.mapWidth = null;
     this.mapHeight = null;
     this.absdisX = 0;
@@ -334,8 +487,8 @@ phina.define('Map', {
     }
 
     for (var i = 0, len = event.length; i < len; i++) {
+      // Doorイベントの場合ドアを作成
       if (event[i][0] === 'Door') {
-        // Doorイベントの場合ドアを作成
         var tmpX = Number(event[i][1]);
         var tmpY = Number(event[i][2]);
         var tmpNextMap = event[i][3];
@@ -344,12 +497,15 @@ phina.define('Map', {
         var tmpNextY = Number(event[i][6]);
         Door(tmpX, tmpY, tmpNextMap, tmpNextEvent, tmpNextX, tmpNextY).addChildTo(this.eventGroup);
       }
-    }
 
-    // 敵
-    Enemy(500, 50).addChildTo(this.enemyGroup);
-    Enemy(500, 50, 1).addChildTo(this.enemyGroup);
-    Enemy(500, 50, 2).addChildTo(this.enemyGroup);
+      // 敵の作成
+      if (event[i][0] === 'Enemy') {
+        var tmpX = Number(event[i][1]);
+        var tmpY = Number(event[i][2]);
+        var tmpPattern = Number(event[i][3]);
+        Enemy(tmpX, tmpY, tmpPattern).addChildTo(this.enemyGroup);
+      }
+    }
 
     this.absdisX = 0;
     this.absdisY = 0;
@@ -364,7 +520,7 @@ phina.define('Map', {
   /**
    * 移動
    */
-  move: function(player, stageGroup, eventGroup, enemyGroup) {
+  move: function(player) {
     player.move();
     var offset = this.calcOffset(player);
 
@@ -394,22 +550,28 @@ phina.define('Map', {
     player.y += -offset.vy;
     
     // ステージの位置調整
-    stageGroup.children.some(function(block) {
+    this.stageGroup.children.some(function(block) {
       block.x += -offset.vx;
       block.y += -offset.vy;
     });
 
     // イベントの位置調整
-    eventGroup.children.some(function(block) {
+    this.eventGroup.children.some(function(block) {
       block.x += -offset.vx;
       block.y += -offset.vy;
     });
 
     // 敵の位置調整
-    enemyGroup.children.some(function(enemy) {
+    this.enemyGroup.children.some(function(enemy) {
       enemy.move();
       enemy.x += -offset.vx;
       enemy.y += -offset.vy;
+    });
+
+    // 敵の位置調整
+    this.shotGroup.children.some(function(shot) {
+      shot.x += -offset.vx;
+      shot.y += -offset.vy;
     });
   },
 
@@ -429,6 +591,7 @@ phina.define('Map', {
   removes: function() {
     this.stageGroup.children.clear();
     this.eventGroup.children.clear();
+    this.enemyGroup.children.clear();
   }
 });
 
@@ -502,6 +665,7 @@ phina.define('Enemy', {
       y: y,
     });
 
+    this.className = 'Enemy';
     this.vx = 0;
     this.vy = 0;
     this.maxVx = 12;
@@ -515,16 +679,24 @@ phina.define('Enemy', {
     this.jumpPower = 0; 
     this.maxJumpPower = 2; // ジャンプの最大距離
     this.jumpCount = 0;
-    this.maxJumpCount = 2; // ジャンプの最大回数
+    this.maxJumpCount = 1; // ジャンプの最大回数
     this.direction = DIRECTION.LEFT;
     this.onFloor = false;
+    this.isDead = false;
+
+    // 透明
+    this.alphaTime = 30;
+    this.alphaCount = this.alphaTime;
+    this.knockback = 0;
+
+    this.hp = 5;
 
     // 敵のパターン
     this.pattern = pattern;
     switch (this.pattern) {
       case 1:
         this.fill = "red";
-        this.speed = 5;
+        this.speed = 4;
         this.height = BOX_SIZE;
         this.vx = -this.speed;
         this.rlFlag = -1;
@@ -532,8 +704,17 @@ phina.define('Enemy', {
 
       case 2:
         this.fill = "white";
-        this.speed = 10;
+        this.speed = 6;
         this.width = BOX_SIZE;
+        this.vx = -this.speed;
+        this.rlFlag = -1;
+        break;
+
+      case 3:
+        this.fill = "gray";
+        this.speed = 8;
+        this.width = BOX_SIZE;
+        this.height = BOX_SIZE;
         this.vx = -this.speed;
         this.rlFlag = -1;
         break;
@@ -556,6 +737,30 @@ phina.define('Enemy', {
       }
     }
 
+    // ジャンプ中の速度
+    if (!this.onFloor) {
+      if (this.vy < this.maxVy) {
+        this.vy += GRAVITY;
+      }
+    } else {
+      // ジャンプの初期化
+      this.jumpCount = 0;
+      this.jumpPower = 0;
+    }
+
+    // ダメージを食らった時の半透明
+    if (this.alphaCount < this.alphaTime) {
+      this.alphaCount++;
+      if (this.alphaCount == 1) {
+        // ノックバック
+        this.vx += this.knockback;
+        this.vy -= 10;
+      }
+      this.alpha = 0.5;
+    } else if (this.alphaCount === this.alphaTime) {
+      this.alpha = 1;
+    }
+
     // パターンによる移動の違い
     switch (this.pattern) {
       case 1:
@@ -564,8 +769,10 @@ phina.define('Enemy', {
           this.rlFlag = -this.rlFlag;
           if (this.rlFlag > 0) {
             this.vx = this.speed;
+            this.direction = DIRECTION.RIGHT;
           } else {
             this.vx = -this.speed;
+            this.direction = DIRECTION.LEFT;
           }
         }
         break;
@@ -576,10 +783,29 @@ phina.define('Enemy', {
           this.rlFlag = -this.rlFlag;
           if (this.rlFlag > 0) {
             this.vx = this.speed;
+            this.direction = DIRECTION.RIGHT;
           } else {
             this.vx = -this.speed;
+            this.direction = DIRECTION.LEFT;
           }
         }
+        break;
+
+      case 3:
+        // 移動できなくなったら逆向きに移動
+        if (this.vx == 0) {
+          this.rlFlag = -this.rlFlag;
+          if (this.rlFlag > 0) {
+            this.vx = this.speed;
+            this.direction = DIRECTION.RIGHT;
+          } else {
+            this.vx = -this.speed;
+            this.direction = DIRECTION.LEFT;
+          }
+        }
+
+        // ずっとジャンプ
+        this.jump();
         break;
       
       default:
@@ -588,8 +814,10 @@ phina.define('Enemy', {
           this.rlFlag = -this.rlFlag;
           if (this.rlFlag > 0) {
             this.vx = this.speed;
+            this.direction = DIRECTION.RIGHT;
           } else {
             this.vx = -this.speed;
+            this.direction = DIRECTION.LEFT;
           }
         }
         break;
@@ -602,6 +830,72 @@ phina.define('Enemy', {
   move: function() {
     this.x += this.vx;
     this.y += this.vy;
+  },
+
+  /**
+   * プレイヤーとヒット
+   */
+  hitPlayer: function() {
+
+  },
+
+  /**
+   * shotに当たった時の処理
+   */
+  hitShot: function(shot) {
+    // 死んでたら当たらない
+    if (this.isDead) {
+      return false;
+    }
+
+    // ダメージ
+    this.hp -= shot.power;
+    if (this.hp < 0) {
+      // 消す
+      this.isDead = true;
+      this.tweener
+      .clear()
+      .by({y: -50, rotation: 360 * 3}, 300, 'swing')
+      .call(function() {
+        this.remove();
+      }.bind(this));
+      return false;
+    }
+
+    // ノックバック
+    if ((shot.angle).toDegree() == 0) {
+      // 右から当たった
+      this.knockback = shot.speed;
+    } else if ((shot.angle).toDegree() == 180) {
+      // 左から当たった
+      this.knockback = -shot.speed;
+    } else {
+      // それ以外の場合は向きに依存
+      if (this.direction == DIRECTION.LEFT) {
+        this.knockback = shot.speed;
+      } else if (this.direction == DIRECTION.RIGHT) {
+        this.knockback = -shot.speed;
+      } else {
+        this.knockback = 0;
+      }
+    }
+
+    // 半透明
+    if (this.alphaCount === this.alphaTime) {
+      this.alphaCount = 0;
+    }
+  },
+
+  /**
+   * ジャンプ
+   */
+  jump: function() {
+    // ジャンプ
+    this.jumpPower++;
+    if (this.jumpPower <= this.maxJumpPower) {
+      this.vy += -this.jumpSpeed;
+      this.onFloor = false;
+    }
   }
 });
 

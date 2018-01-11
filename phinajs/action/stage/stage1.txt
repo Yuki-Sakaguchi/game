@@ -1,7 +1,7 @@
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 B                  B                   B
 B                  B                   B
-B         BBBBBBBBBB                   B
+B                  B                   B
 B                  B                   B
 BBBBBB                                 B
 B                                      B
