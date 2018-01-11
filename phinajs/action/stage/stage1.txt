@@ -10,9 +10,9 @@ B       BB         BBBBBB    BBBBBBBB  B
 B                  BBBB     BBBBBBBBB  B
 BBBBB             BBBB     BBBBBBBBBB  B
 B                BBBBBB     BBBBBBBBB  B
-BB    BBBBBB    BBBBBBBBB    BBBBBBBB  B
+BB              BBBBBBBBB    BBBBBBBB  B
 B              BBBBBBBBBB    BBBBBBBB  B
-B       BBBBBBBBBBBBBBBBBB       BBBB  B
+BBBBBBBBBBBBBBBBBBBBBBBBBB       BBBB  B
 BB      BBBBBBBBBBBBBBBBBBBB     BBBB  B
 BBB                         BBB        B
 BBBB                           B       B

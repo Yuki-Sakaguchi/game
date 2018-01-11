@@ -46,12 +46,13 @@ phina.define('MainScene', {
     this.eventGroup = DisplayElement().addChildTo(this);
     this.stageGroup = DisplayElement().addChildTo(this);
     this.playerGroup = DisplayElement().addChildTo(this);
+    this.enemyGroup = DisplayElement().addChildTo(this);
     
     // プレイヤー
-    this.player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2).addChildTo(this.playerGroup);
+    this.player = Player(100, 100).addChildTo(this.playerGroup);
 
     // マップ生成
-    this.map = Map(this.stageGroup, this.eventGroup);
+    this.map = Map(this.stageGroup, this.eventGroup, this.enemyGroup);
     this.map.loading('text', 'stage1', 'stage1_evt', this.player, 100, 100);
   },
 
@@ -59,10 +60,19 @@ phina.define('MainScene', {
    * 更新
    */
   update: function(app) {
+    // プレイヤーと床の判定
     this.collisionX(this.playerGroup, this.stageGroup);
     this.collisionY(this.playerGroup, this.stageGroup);
+
+    // 敵と床の判定
+    this.collisionX(this.enemyGroup, this.stageGroup);
+    this.collisionY(this.enemyGroup, this.stageGroup);
+
+    // プレイヤーとイベントの判定
     this.collistionEvent(this.playerGroup, this.eventGroup, this.map);
-    this.map.move(this.player, this.stageGroup, this.eventGroup);
+
+    // マップの移動
+    this.map.move(this.player, this.stageGroup, this.eventGroup, this.enemyGroup);
   },
 
   /**
@@ -281,10 +291,11 @@ phina.define('Map', {
   /**
    * 初期化
    */
-  init: function(stageGroup, eventGroup) {
+  init: function(stageGroup, eventGroup, enemyGroup) {
     this.superInit();
     this.stageGroup = stageGroup;
     this.eventGroup = eventGroup;
+    this.enemyGroup = enemyGroup;
     this.mapWidth = null;
     this.mapHeight = null;
     this.absdisX = 0;
@@ -335,6 +346,11 @@ phina.define('Map', {
       }
     }
 
+    // 敵
+    Enemy(500, 50).addChildTo(this.enemyGroup);
+    Enemy(500, 50, 1).addChildTo(this.enemyGroup);
+    Enemy(500, 50, 2).addChildTo(this.enemyGroup);
+
     this.absdisX = 0;
     this.absdisY = 0;
 
@@ -348,7 +364,7 @@ phina.define('Map', {
   /**
    * 移動
    */
-  move: function(player, stageGroup, eventGroup) {
+  move: function(player, stageGroup, eventGroup, enemyGroup) {
     player.move();
     var offset = this.calcOffset(player);
 
@@ -373,20 +389,27 @@ phina.define('Map', {
       this.absdisY = this.mapHeight - SCREEN_HEIGHT;
     }
 
-    // プレイヤーの位置移動
+    // プレイヤーの位置調整
     player.x += -offset.vx;
     player.y += -offset.vy;
     
-    // ステージの位置移動
+    // ステージの位置調整
     stageGroup.children.some(function(block) {
       block.x += -offset.vx;
       block.y += -offset.vy;
     });
 
-    // イベントの位置移動
+    // イベントの位置調整
     eventGroup.children.some(function(block) {
       block.x += -offset.vx;
       block.y += -offset.vy;
+    });
+
+    // 敵の位置調整
+    enemyGroup.children.some(function(enemy) {
+      enemy.move();
+      enemy.x += -offset.vx;
+      enemy.y += -offset.vy;
     });
   },
 
@@ -456,6 +479,129 @@ phina.define('Door', {
     this.nextEvent = nextEvent;
     this.nextX = nextX;
     this.nextY = nextY;
+  }
+});
+
+
+// ====================================
+// 敵
+// ====================================
+phina.define('Enemy', {
+  superClass: 'RectangleShape',
+
+  /**
+   * 初期化
+   */
+  init: function(x, y, pattern) {
+    this.superInit({
+      width: BOX_SIZE / 2,
+      height: BOX_SIZE / 2,
+      fill: 'white',
+      stroke: null,
+      x: x,
+      y: y,
+    });
+
+    this.vx = 0;
+    this.vy = 0;
+    this.maxVx = 12;
+    this.maxVy = 14;
+
+    this.scaleX = 1;
+    this.scaleY = 1;
+    
+    this.speed = 2; // 移動スピード
+    this.jumpSpeed = 10; // ジャンプの速度
+    this.jumpPower = 0; 
+    this.maxJumpPower = 2; // ジャンプの最大距離
+    this.jumpCount = 0;
+    this.maxJumpCount = 2; // ジャンプの最大回数
+    this.direction = DIRECTION.LEFT;
+    this.onFloor = false;
+
+    // 敵のパターン
+    this.pattern = pattern;
+    switch (this.pattern) {
+      case 1:
+        this.fill = "red";
+        this.speed = 5;
+        this.height = BOX_SIZE;
+        this.vx = -this.speed;
+        this.rlFlag = -1;
+        break;
+
+      case 2:
+        this.fill = "white";
+        this.speed = 10;
+        this.width = BOX_SIZE;
+        this.vx = -this.speed;
+        this.rlFlag = -1;
+        break;
+
+      default:
+        this.fill = "green";
+        this.vx = -this.speed;
+        this.rlFlag = -1;
+    }
+  },
+
+  /**
+   * 更新
+   */
+  update: function(app) {
+    // 落下
+    if (!this.onFloor) {
+      if (this.vy < this.maxVy) {
+        this.vy += GRAVITY;
+      }
+    }
+
+    // パターンによる移動の違い
+    switch (this.pattern) {
+      case 1:
+        // 移動できなくなったら逆向きに移動
+        if (this.vx == 0) {
+          this.rlFlag = -this.rlFlag;
+          if (this.rlFlag > 0) {
+            this.vx = this.speed;
+          } else {
+            this.vx = -this.speed;
+          }
+        }
+        break;
+
+      case 2:
+        // 移動できなくなったら逆向きに移動
+        if (this.vx == 0) {
+          this.rlFlag = -this.rlFlag;
+          if (this.rlFlag > 0) {
+            this.vx = this.speed;
+          } else {
+            this.vx = -this.speed;
+          }
+        }
+        break;
+      
+      default:
+        // 移動できなくなったら逆向きに移動
+        if (this.vx == 0) {
+          this.rlFlag = -this.rlFlag;
+          if (this.rlFlag > 0) {
+            this.vx = this.speed;
+          } else {
+            this.vx = -this.speed;
+          }
+        }
+        break;
+    }
+  },
+
+  /**
+   * 移動
+   */
+  move: function() {
+    this.x += this.vx;
+    this.y += this.vy;
   }
 });
 
