@@ -72,6 +72,9 @@ phina.define('MainScene', {
     this.collisionY(this.enemyGroup, this.stageGroup);
     this.collisionShot(this.shotGroup, this.enemyGroup);
 
+    // ショットと壁
+    this.collisionBlock(this.stageGroup, this.shotGroup);
+
     // マップの移動
     this.map.move(this.player);
   },
@@ -85,6 +88,19 @@ phina.define('MainScene', {
         if (Collision.testRectRect(player, enemy)) {
           player.hitEnemy();
           enemy.hitPlayer();
+        }
+      });
+    });
+  },
+
+  /**
+   * 壁とショット
+   */
+  collisionBlock: function(stages, shots) {
+    stages.children.some(function(stage) {
+      shots.children.some(function(shot) {
+        if (Collision.testRectRect(stage, shot)) {
+          shot.hitEvent();
         }
       });
     });
