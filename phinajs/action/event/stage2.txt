@@ -1,5 +1,5 @@
-Door,100,382,stage1,stage1_evt,1088,192
-Door,2200,382,stage3,stage3_evt,100,100
+Door,100,706,stage1,stage1_evt,1088,192
+Door,2200,706,stage3,stage3_evt,100,100
 Enemy,500,100,3
 Enemy,1000,100,3
 Enemy,1500,100,3

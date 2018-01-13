@@ -7,8 +7,9 @@ phina.globalize();
 // ====================================
 var SCREEN_WIDTH = 640;
 var SCREEN_HEIGHT = 960;
-var GRAVITY = 1.8;
 var BOX_SIZE = 32;
+var BTN_AREA_HEIGHT = BOX_SIZE * 6;
+var GRAVITY = 1.8;
 
 var DIRECTION = {
   UP   : 0,
@@ -48,6 +49,7 @@ phina.define('MainScene', {
     this.stageGroup = DisplayElement().addChildTo(this);
     this.playerGroup = DisplayElement().addChildTo(this);
     this.enemyGroup = DisplayElement().addChildTo(this);
+    this.btnGroup = DisplayElement().addChildTo(this);
     
     // プレイヤー
     this.player = Player(100, 100, this.shotGroup).addChildTo(this.playerGroup);
@@ -55,6 +57,9 @@ phina.define('MainScene', {
     // マップ生成
     this.map = Map(this.stageGroup, this.eventGroup, this.enemyGroup, this.shotGroup);
     this.map.loading('text', 'stage1', 'stage1_evt', this.player, 100, 100);
+
+    // ボタン生成
+    Btn(this.player).addChildTo(this.btnGroup);
   },
 
   /**
@@ -101,6 +106,7 @@ phina.define('MainScene', {
       shots.children.some(function(shot) {
         if (Collision.testRectRect(stage, shot)) {
           shot.hitEvent();
+          stage.hitShot(shot);
         }
       });
     });
@@ -258,16 +264,14 @@ phina.define('Player', {
       }
     }
 
-    // 左に移動
+    // 左に
     if (this.key.getKey('left')) {
-      this.vx += -this.speed;
-      this.direction = DIRECTION.LEFT;
+      this.moveLeft();
     }
 
-    // 右に移動
+    // 右に
     if (this.key.getKey('right')) {
-      this.vx += this.speed;
-      this.direction = DIRECTION.RIGHT;
+      this.moveRight();
     }
 
     // 下を向く
@@ -281,7 +285,25 @@ phina.define('Player', {
     }
 
     // ジャンプ
-    this.jump();
+    if (this.key.getKey('space')) {
+      this.jump();
+    }
+
+    // ジャンプのカウント
+    if (this.key.getKeyDown('space')) {
+      this.jumpStart();
+    }
+
+    // ジャンプ中の速度
+    if (!this.onFloor) {
+      if (this.vy < this.maxVy) {
+        this.vy += GRAVITY;
+      }
+    } else {
+      // ジャンプの初期化
+      this.jumpCount = 0;
+      this.jumpPower = 0;
+    }
 
     // ダメージを食らった時の半透明
     if (this.alphaCount < this.alphaTime) {
@@ -361,35 +383,40 @@ phina.define('Player', {
    */
   jump: function() {
     // ジャンプ
-    if (this.key.getKey('space')) {
-      if (this.jumpCount <= this.maxJumpCount) {
-        this.jumpPower++;
-        if (this.jumpPower <= this.maxJumpPower) {
-          this.vy += -this.jumpSpeed;
-          this.onFloor = false;
-        }
+    if (this.jumpCount <= this.maxJumpCount) {
+      this.jumpPower++;
+      if (this.jumpPower <= this.maxJumpPower) {
+        this.vy += -this.jumpSpeed;
+        this.onFloor = false;
       }
     }
+  },
 
-    // ジャンプのカウント
-    if (this.key.getKeyDown('space')) {
-      if (this.jumpCount < this.maxJumpCount) {
-        this.jumpCount++;
-        this.jumpPower = 0;
-        this.vy = 0;
-      }
-    }
-
-    // ジャンプ中の速度
-    if (!this.onFloor) {
-      if (this.vy < this.maxVy) {
-        this.vy += GRAVITY;
-      }
-    } else {
-      // ジャンプの初期化
-      this.jumpCount = 0;
+  /**
+   * ジャンプスタート直後
+   */
+  jumpStart: function() {
+    if (this.jumpCount < this.maxJumpCount) {
+      this.jumpCount++;
       this.jumpPower = 0;
+      this.vy = 0;
     }
+  },
+
+  /**
+   * 左に移動
+   */
+  moveLeft: function() { 
+    this.vx += -this.speed;
+    this.direction = DIRECTION.LEFT;
+  },
+
+  /**
+   * 右に移動
+   */
+  moveRight: function() {
+    this.vx += this.speed;
+    this.direction = DIRECTION.RIGHT;
   }
 });
 
@@ -429,7 +456,7 @@ phina.define('Shot', {
     this.x += this.vx;
     this.y += this.vy;
 
-    if (this.x < 0 || this.x > SCREEN_WIDTH || this.y < 0 || this.y > SCREEN_HEIGHT) {
+    if (this.x < 0 || this.x > SCREEN_WIDTH || this.y < 0 || this.y > (SCREEN_HEIGHT - BTN_AREA_HEIGHT)) {
       this.remove();
     }
   },
@@ -488,7 +515,10 @@ phina.define('Map', {
     for (var i = 0, iLen = map.length; i < iLen; i++) {
       for (var j = 0, jLen = map[i].length; j < jLen; j++) {
         if (map[i][j] === 'B') {
-          Block(j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
+          Block('normal', j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
+        }
+        if (map[i][j] === 'W') {
+          Block('break', j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
         }
       }
     }
@@ -556,9 +586,9 @@ phina.define('Map', {
     if (this.absdisY < 0) {
       offset.vy -= this.absdisY;
       this.absdisY = 0;
-    } else if (this.absdisY > this.mapHeight - SCREEN_HEIGHT) {
-      offset.vy -= (this.absdisY - (this.mapHeight - SCREEN_HEIGHT));
-      this.absdisY = this.mapHeight - SCREEN_HEIGHT;
+    } else if (this.absdisY > this.mapHeight - (SCREEN_HEIGHT - BTN_AREA_HEIGHT)) {
+      offset.vy -= (this.absdisY - (this.mapHeight - (SCREEN_HEIGHT - BTN_AREA_HEIGHT)));
+      this.absdisY = this.mapHeight - (SCREEN_HEIGHT - BTN_AREA_HEIGHT);
     }
 
     // プレイヤーの位置調整
@@ -597,7 +627,7 @@ phina.define('Map', {
   calcOffset: function(player) {
     return {
       vx: player.x - SCREEN_WIDTH / 2,
-      vy: player.y - SCREEN_HEIGHT / 2
+      vy: player.y - (SCREEN_HEIGHT - BTN_AREA_HEIGHT) / 2
     };
   },
 
@@ -613,6 +643,136 @@ phina.define('Map', {
 
 
 // ====================================
+// ボタン
+// ====================================
+phina.define('Btn', {
+  superClass: 'RectangleShape',
+
+  /**
+   * 初期化
+   */
+  init: function(player) {
+    this.superInit({
+      width: SCREEN_WIDTH,
+      height: BTN_AREA_HEIGHT,
+      fill: "#30579b",
+      stroke: null,
+      x: SCREEN_WIDTH / 2,
+      y: SCREEN_HEIGHT - (BTN_AREA_HEIGHT / 2)
+    });
+    this.setInteractive(true);
+    this.player = player;
+
+    // 右ボタン生成
+    this.rightBtn = this.createBtn('right', this.x / 1.6, 0);
+
+    // 左ボタン生成
+    this.leftBtn = this.createBtn('left', -this.x / 1.6, 0);
+
+    // 真ん中ボタン生成
+    this.centerBtn = this.createBtn('center', 0, 0);
+  },
+
+  /**
+   * ボタン生成
+   */
+  createBtn: function(text, x, y, func) {
+    // ボタンの影
+    var shadowHeight = 10;
+    var shadow = RectangleShape({
+      width: (SCREEN_WIDTH - 200) / 3,
+      height: shadowHeight,
+      stroke: null,
+      fill: '#367ABD'
+    }).addChildTo(this);
+    
+    // ボタン
+    var btn = RectangleShape({
+      width: (SCREEN_WIDTH - 200) / 3,
+      height: (BTN_AREA_HEIGHT - shadowHeight) / 1.5,
+      stroke: null,
+      fill: '#4CB2D4'
+    }).addChildTo(this);
+
+    // 三角形
+    this.createTriangle(text, btn);
+
+    // 配置
+    btn.setPosition(x, y - shadowHeight / 2);
+    shadow.setPosition(x, y + btn.height/2);
+
+    // アニメーション用の位置保存
+    var beforeY = btn.y;
+    var afterY = btn.y + shadowHeight;
+    
+    btn.isActive = false;
+
+    // タッチ開始
+    btn.setInteractive(true);
+    btn.onpointstart = function() {
+      btn.isActive = true;
+      btn.tweener.clear()
+      .to({
+        y: afterY
+      }, 50);
+    };
+   
+    // タッチ終了
+    btn.onpointend = function() {
+      btn.tweener.clear()
+      .to({
+        y: beforeY
+      }, 50);
+      btn.isActive = false;
+    };
+
+    return btn;
+  },
+
+  /**
+   * 更新
+   */
+  update: function(app) {
+    if (this.rightBtn.isActive) {
+      this.player.moveRight();
+    }
+
+    if (this.leftBtn.isActive) {
+      this.player.moveLeft();
+    }
+
+    if (this.centerBtn.isActive) {
+      this.player.jump();
+    }
+  },
+
+  /**
+   * 三角形
+   */
+  createTriangle: function(text, btn) {
+    var traiangle = TriangleShape({
+      width: btn.width / 2,
+      height: btn.height / 2,
+      fill: 'white',
+      stroke: null
+    }).addChildTo(btn);
+
+    // 向き変更
+    switch (text) {
+      case 'right':
+        traiangle.rotation = 90;
+        break;
+      case 'left':
+        traiangle.rotation = 270;
+        break;
+      default:
+        traiangle.rotation = 0;
+    }
+  }
+});
+
+
+// ====================================
 // ブロック
 // ====================================
 phina.define('Block', {
@@ -621,16 +781,41 @@ phina.define('Block', {
   /**
    * 初期化
    */
-  init: function(x, y) {
+  init: function(text, x, y) {
     this.superInit({
       width: BOX_SIZE,
       height: BOX_SIZE + 1, // ジャンプした時に隙間ができるので大きめにした
       x: x + BOX_SIZE / 2,
       y: y + BOX_SIZE / 2,
-      fill: '#30499B',
-      stroke: '#30499B',
-      strokeWidth: 0,
+      stroke: null,
     });
+    this.type = text;
+    this.MAX_HP = 5;
+    this.hp = this.MAX_HP;
+
+    switch (text) {
+      case 'break':
+        this.fill = '#4CB2D4';
+        break;
+      default:
+        this.fill = '#30499B';
+    }
+  },
+
+  /**
+   * ショットが当たった時
+   */
+  hitShot: function(shot) {
+    if (this.type == 'break') {
+      this.hp -= shot.power;
+      
+      // 透明度
+      this.alpha = this.hp / 10;
+
+      if (this.hp < 0) {
+        this.remove();
+      }
+    }
   }
 });
 
@@ -648,8 +833,8 @@ phina.define('Door', {
     this.superInit({
       width: BOX_SIZE,
       height: BOX_SIZE * 2,
-      fill: '#F9ED3A',
-      stroke: '#F9ED3A',
+      fill: 'black',
+      stroke: 'white',
       x: x,
       y: y,
     });
@@ -711,7 +896,7 @@ phina.define('Enemy', {
     this.pattern = pattern;
     switch (this.pattern) {
       case 1:
-        this.fill = "red";
+        this.fill = "#EE4035";
         this.speed = 4;
         this.height = BOX_SIZE;
         this.vx = -this.speed;
@@ -736,7 +921,7 @@ phina.define('Enemy', {
         break;
 
       default:
-        this.fill = "green";
+        this.fill = "#56B949";
         this.vx = -this.speed;
         this.rlFlag = -1;
     }
