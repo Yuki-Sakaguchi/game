@@ -8,7 +8,7 @@ phina.globalize();
 var SCREEN_WIDTH = 640;
 var SCREEN_HEIGHT = 960;
 var BOX_SIZE = 32;
-var BTN_AREA_HEIGHT = BOX_SIZE * 8;
+var BTN_AREA_HEIGHT = BOX_SIZE * 12;
 var GRAVITY = 1.8;
 
 var DIRECTION = {
@@ -259,10 +259,10 @@ phina.define('Player', {
     // 移動していない時、慣性で徐々に止める
     if (!this.key.getKey('right') || !this.key.getKey('left')) {
       if (this.vx > 0) {
-        this.vx -= this.speed/2;
+        this.vx -= this.speed / 2;
       }
       if (this.vx < 0) {
-        this.vx += this.speed/2;
+        this.vx += this.speed / 2;
       }
     }
 
@@ -687,19 +687,19 @@ phina.define('Btn', {
     this.player = player;
 
     // 右ボタン生成
-    this.rightBtn = this.createBtn('right', this.x / 1.6, -55);
+    this.rightBtn = this.createBtn('right', this.x / 1.6, 0);
 
     // 左ボタン生成
-    this.leftBtn = this.createBtn('left', -this.x / 1.6, -55);
+    this.leftBtn = this.createBtn('left', -this.x / 1.6, 0);
 
     // 真ん中上ボタン生成
-    this.topBtn = this.createBtn('top', 0, -50);
+    this.topBtn = this.createBtn('top', 0, -120);
 
     // 真ん中下ボタン生成
-    this.bottomBtn = this.createBtn('bottom', 0, 70);
+    this.bottomBtn = this.createBtn('bottom', 0, 120);
 
     // 攻撃ボタン
-    this.attackBtn = this.createBtn('attack', 0, 70);
+    this.attackBtn = this.createBtn('attack', 0, 0);
   },
 
   /**
@@ -709,7 +709,7 @@ phina.define('Btn', {
     // ボタンの影
     var shadowHeight = 10;
     var shadow = RectangleShape({
-      width: text == 'attack' ? SCREEN_WIDTH - 90 : (SCREEN_WIDTH - 200) / 2.5,
+      width: (SCREEN_WIDTH - 200) / 2.5,
       height: shadowHeight,
       stroke: null,
       fill: '#367ABD'
@@ -717,8 +717,8 @@ phina.define('Btn', {
     
     // ボタン
     var btn = RectangleShape({
-      width: text == 'attack' ? SCREEN_WIDTH - 90 : (SCREEN_WIDTH - 200) / 2.5,
-      height: text == 'attack' ? (BTN_AREA_HEIGHT - shadowHeight) / 3.5 : (BTN_AREA_HEIGHT - shadowHeight) / 3,
+      width: (SCREEN_WIDTH - 200) / 2.5,
+      height: (BTN_AREA_HEIGHT - shadowHeight) / 4,
       stroke: null,
       fill: '#4CB2D4'
     }).addChildTo(this);
@@ -737,22 +737,12 @@ phina.define('Btn', {
     }
 
     // 配置
-    if (text == 'top') {
-      btn.height = btn.height / 2;
-      btn.setPosition(x, (y - shadowHeight / 2) - 25);
-      shadow.setPosition(x, (y + btn.height / 2) - 25);
-    } else if (text == 'bottom') {
-      btn.height = btn.height / 2;
-      btn.setPosition(x, (y - shadowHeight / 2) - 80);
-      shadow.setPosition(x, (y + btn.height / 2) - 80);
-    } else if (text == 'right') {
-      btn.height += 26;
-      btn.setPosition(x - 10, y - shadowHeight / 2 + 12);
-      shadow.setPosition(x - 10, y + btn.height / 2 + 12); 
+    if (text == 'right') {
+      btn.setPosition(x - 10, y - shadowHeight / 2);
+      shadow.setPosition(x - 10, y + btn.height / 2); 
     } else if (text == 'left') {
-      btn.height += 26;
-      btn.setPosition(x + 10, y - shadowHeight / 2 + 12);
-      shadow.setPosition(x + 10, y + btn.height / 2 + 12); 
+      btn.setPosition(x + 10, y - shadowHeight / 2);
+      shadow.setPosition(x + 10, y + btn.height / 2); 
     } else {
       btn.setPosition(x, y - shadowHeight / 2);
       shadow.setPosition(x, y + btn.height / 2); 
@@ -762,7 +752,8 @@ phina.define('Btn', {
     var beforeY = btn.y;
     var afterY = btn.y + shadowHeight;
     
-    btn.isActive = false;
+    btn.isActive = false; // ボタンを押している時true
+    btn.isActiveStart = false; // ボタンを押した瞬間だけtrue
 
     // タッチ開始
     btn.setInteractive(true);
@@ -781,6 +772,7 @@ phina.define('Btn', {
         y: beforeY
       }, 50);
       btn.isActive = false;
+      btn.isActiveStart = false;
     };
 
     return btn;
@@ -799,8 +791,14 @@ phina.define('Btn', {
     }
 
     if (this.topBtn.isActive) {
+      if (!this.topBtn.isActiveStart) {
+        this.player.jumpStart();
+        this.topBtn.isActiveStart = true;
+      }
       this.player.direction = DIRECTION.UP;
       this.player.jump();
+    } else {
+      this.topBtn.isActiveStart = false;
     }
 
     if (this.bottomBtn.isActive) {
@@ -822,11 +820,6 @@ phina.define('Btn', {
       fill: 'white',
       stroke: null
     }).addChildTo(btn);
-
-    if (text == 'top' || text == 'bottom') {
-      traiangle.scaleX = 0.4;
-      traiangle.scaleY = 0.4;
-    }
 
     // 向き変更
     switch (text) {
