@@ -187,6 +187,10 @@ phina.define('MainScene', {
       events.children.some(function(event) {
         if (Collision.testRectRect(player, event)) {
           player.hit(event, map);
+
+          if (event.className == "Item") {
+            event.hitPlayer(player);
+          }
         }
       });
     });
@@ -235,6 +239,7 @@ phina.define('Player', {
     this.alphaCount = this.alphaTime;
 
     // 攻撃
+    this.shotType = 'shot1';
     this.MAX_SHOT_COUNT = 3;
     this.shotCount = 0;
     this.shotAngle = 270;
@@ -367,7 +372,7 @@ phina.define('Player', {
           this.shotAngle = 180;
           break;
       }
-      Shot(this.x, this.y, this.shotAngle, 30).addChildTo(this.shotGroup);
+      Shot(this.x, this.y, this.shotAngle, this.shotType).addChildTo(this.shotGroup);
     }
   },
 
@@ -447,7 +452,7 @@ phina.define('Shot', {
   /**
    * 初期化
    */
-  init: function(x, y, angle, speed) {
+  init: function(x, y, angle, type) {
     this.superInit({
       fill: 'pink',
       stroke: null,
@@ -456,12 +461,147 @@ phina.define('Shot', {
       x: x,
       y: y
     });
-
-    this.power = 3;
-    this.speed = speed;
+    this.type = type;
     this.angle = (angle).toRadian();
-    this.hp = 1;
-    this.isThrough = true; // 貫通
+    this.isBlockThrough = false;
+    this.isEnemyThrough = false;
+    this.hp = 10;
+
+    // タイプ
+    switch (this.type) {
+      // 貫通弾
+      case "shot2":
+        this.power = 5;
+        this.speed = 30;
+        this.isThrough = true;
+        this.isBlockThrough = true;
+        this.fill = 'red';
+        this.width = 10;
+        this.height = 10;
+        this.hp = 20;
+        break;
+
+      // レーザー弾
+      case "shot3":
+        this.power = 10;
+        this.speed = 15;
+        this.isThrough = true;
+        this.fill = 'blue';
+        this.hp = 999999999;
+
+        var offset = 20;
+        if (angle == 0 || angle == 180) {
+          this.width = 50;
+          this.height = 10;
+
+          if (angle == 0) {
+            this.x += offset;
+          } else {
+            this.x -= offset;
+          }
+
+        } else {
+          this.width = 10;
+          this.height = 50;
+
+          if (angle == 90) {
+            this.y -= offset;
+          } else {
+            this.y += offset;
+          }
+        }
+        break;
+
+      // ソード弾
+      case "shot4":
+        this.power = 30;
+        this.speed = 10;
+        this.isThrough = true;
+        this.isBlockThrough = true;
+        this.isEnemyThrough = true;
+        this.fill = '#ccc';
+        this.hp = 3;
+
+        var offset = BOX_SIZE / 1.5;
+        if (angle == 0 || angle == 180) {
+          this.width = 5;
+          this.height = 50;
+          
+          if (angle == 0) {
+            this.x += offset;
+          } else {
+            this.x -= offset;
+          }
+
+        } else {
+          this.width = 50;
+          this.height = 5;
+
+          if (angle == 90) {
+            this.y -= offset;
+          } else {
+            this.y += offset;
+          }
+        }
+        break;
+
+      // 置弾
+      case "shot5":
+        this.power = 30;
+        this.speed = 2;
+        this.width = 100;
+        this.height = 100;
+        this.isThrough = true;
+        this.isBlockThrough = true;
+        this.isEnemyThrough = true;
+        this.fill = 'purple';
+        this.hp = 200;
+        break;
+      
+      // 周囲弾
+      case "shot6":
+        this.power = 3;
+        this.speed = 0;
+        this.width = 50;
+        this.height = 50;
+        this.stroke = '#00693E';
+        this.strokeWidth = 10;
+        this.isThrough = true;
+        this.isBlockThrough = true;
+        this.isEnemyThrough = true;
+        this.fill = null;
+        this.cornerRadius = 20;
+        this.hp = 10;
+        this.tweener.clear()
+        .to({
+          scaleX: 2,
+          scaleY: 2,
+        });
+        break;
+      
+      // 神弾
+      case "shot7":
+        this.power = 10;
+        this.speed = 30;
+        this.isThrough = true;
+        this.isBlockThrough = true;
+        this.isEnemyThrough = true;
+        this.fill = 'yellow';
+        this.hp = 999999999;
+        this.width = 50;
+        this.height = 200;
+        this.angle = (90).toRadian();
+        break;
+    
+      // 通常弾
+      default:
+        this.power = 1;
+        this.speed = 30;
+        this.isThrough = false;
+        this.fill = 'pink';
+        this.width = 10;
+        this.height = 10;
+    }
   },
 
   /**
@@ -474,6 +614,11 @@ phina.define('Shot', {
     this.x += this.vx;
     this.y += this.vy;
 
+    this.hp--;
+    if (this.hp < 0) {
+      this.remove();
+    }
+
     if (this.x < 0 || this.x > SCREEN_WIDTH || this.y < 0 || this.y > (SCREEN_HEIGHT - BTN_AREA_HEIGHT)) {
       this.remove();
     }
@@ -483,7 +628,9 @@ phina.define('Shot', {
    * 敵との接触
    */
   hitEnemy: function() {
-    this.remove();
+    if (!this.isEnemyThrough) {
+      this.remove();
+    }
   },
 
   /**
@@ -491,7 +638,9 @@ phina.define('Shot', {
    */
   hitEvent: function(block) {
     if (block.type == 'block') {
-      this.remove();
+      if (!this.isBlockThrough) {
+        this.remove();
+      }
     }
     if (block.type == 'break' && !this.isThrough) {
       this.remove();
@@ -565,6 +714,15 @@ phina.define('Map', {
         var tmpNextX = Number(event[i][5]);
         var tmpNextY = Number(event[i][6]);
         Door(tmpX, tmpY, tmpNextMap, tmpNextEvent, tmpNextX, tmpNextY).addChildTo(this.eventGroup);
+      }
+
+      // 敵の作成
+      if (event[i][0] === 'Item') {
+        var tmpX = Number(event[i][1]);
+        var tmpY = Number(event[i][2]);
+        var tmpType = event[i][3];
+        var tmpParam =event[i][4];
+        Item('Item', tmpX, tmpY, tmpType, tmpParam).addChildTo(this.eventGroup);
       }
 
       // 敵の作成
@@ -738,9 +896,11 @@ phina.define('Btn', {
 
     // 配置
     if (text == 'right') {
+      btn.height = BTN_AREA_HEIGHT - 50;
       btn.setPosition(x - 10, y - shadowHeight / 2);
       shadow.setPosition(x - 10, y + btn.height / 2); 
     } else if (text == 'left') {
+      btn.height = BTN_AREA_HEIGHT - 50;
       btn.setPosition(x + 10, y - shadowHeight / 2);
       shadow.setPosition(x + 10, y + btn.height / 2); 
     } else {
@@ -857,7 +1017,7 @@ phina.define('Block', {
       stroke: null,
     });
     this.type = text;
-    this.MAX_HP = 2;
+    this.MAX_HP = 1;
     this.hp = this.MAX_HP;
 
     switch (text) {
@@ -879,7 +1039,7 @@ phina.define('Block', {
       // 透明度
       this.alpha = this.hp / 10;
 
-      if (this.hp < 0) {
+      if (this.hp <= 0) {
         this.remove();
       }
     }
@@ -910,6 +1070,63 @@ phina.define('Door', {
     this.nextEvent = nextEvent;
     this.nextX = nextX;
     this.nextY = nextY;
+  }
+});
+
+// ====================================
+// アイテム
+// ====================================
+phina.define('Item', {
+  superClass: 'CircleShape',
+
+  /**
+   * 初期化
+   */
+  init: function(text, x, y, type, param) {
+    this.superInit({
+      x: x + BOX_SIZE / 2,
+      y: y + BOX_SIZE / 2,
+      stroke: null,
+      fill: 'pink',
+      scaleX: 0.5,
+      scaleY: 0.5,
+    });
+    this.className = text;
+    this.type = type;
+    this.param = param;
+
+    switch (this.type) {
+      case "shot":
+        if (this.param == 'shot1') {
+          this.fill = 'pink';
+        } else if (this.param == 'shot2') {
+          this.fill = 'red';
+        } else if (this.param == 'shot3') {
+          this.fill = 'blue';
+        } else if (this.param == 'shot4') {
+          this.fill = '#ccc';
+        } else if (this.param == 'shot5') {
+          this.fill = 'purple';
+        } else if (this.param == 'shot6') {
+          this.fill = '#00693E';
+        } else if (this.param == 'shot7') {
+          this.fill = 'yellow';
+        }
+        break;
+    }
+  },
+
+  /**
+   * ショットが当たった時
+   */
+  hitPlayer: function(player) {
+    switch (this.type) {
+      case "shot":
+        player.shotType = this.param;
+        break;
+    }
+    console.log(player.shotType)
+    this.remove();
   }
 });
 

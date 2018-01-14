@@ -2,11 +2,11 @@ BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 B                                      B
 B                                      B
 B                               WWWW   B
+BBBBBBBBBBBBBBBBBBBBBB          W  W   B
 B                               W  W   B
-BBBBBBBBBB                      W  W   B
 B                               W  W   B
-B                    BBBBBWWWWBBBBBBB  B
-B                   BBBBBWWWWBBBBBBBB  B
+B                         WWWWBBBBBBB  B
+B                        WWWWBBBBBBBB  B
 B                  BBBBWWWWWBBBBBBBBB  B
 B                 BBBBWWWWWBBBBBBBBBB  B
 B                BBBBBBWWWWWBBBBBBBBB  B
