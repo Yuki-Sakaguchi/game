@@ -9,6 +9,6 @@ Enemy,550,50,2
 Enemy,550,50,3
 Enemy,550,50,0
 Enemy,600,50,1
-Enemy,400,50,2
+Enemy,600,50,2
 Enemy,600,50,3
 Enemy,600,50,0

@@ -1,27 +1,27 @@
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
-B                  B                   B
-B                  B                   B
-B                  B                   B
-B                  W                   B
-BBBBBB             W                   B
-B                  W                   B
-B                  W BBBBB    BBBBBBB  B
-B                  WBBBBB    BBBBBBBB  B
-B                  BBBB     BBBBBBBBB  B
-B                 BBBB     BBBBBBBBBB  B
-B                BBBBBB     BBBBBBBBB  B
-B               BBBBBBBB     BBBBBBBB  B
-B              BBBBBBBBBB     BBBBBBB  B
-BBBBBBBBBBBBBBBBBBBBBBBBB        BBBB  B
-B              BBBBBBBBBBB        BBB  B
-B             BBBBB                    B
-B            BBBB        BBB   B       B
-BBBBBBBBBBBBBBB        BBBBB   BB      B
-B                    BBBBBBB   BBB     B
-B                  BBBBBBBBB   BBBB    B
-BB               BBBBBBBBBBB   BBBBB   B
-B              BBBBBBBBBBBBB   BBBBBB  B
 B                                      B
+B                                      B
+B                               WWWW   B
+B                               W  W   B
+BBBBBBBBBB                      W  W   B
+B                               W  W   B
+B                    BBBBBWWWWBBBBBBB  B
+B                   BBBBBWWWWBBBBBBBB  B
+B                  BBBBWWWWWBBBBBBBBB  B
+B                 BBBBWWWWWBBBBBBBBBB  B
+B                BBBBBBWWWWWBBBBBBBBB  B
+B               BBBBBBBBBWWWWBBBBBBBB  B
+B              BBBBBBBBBBWWWWWBBBBBBB  B
+BWWWWWWWWWWWWWBBBBBBBBBBBWWWWWWWWBBBB  B
+B              BBBBBBBBBBBWWWWWWWWBBB  B
+B             BBBBB         WWW        B
+B            BBBB        BBBWWWB       B
+BWWWWWWWWWWWWBB        BBBBBWWWBB      B
+B                    BBBBBBBWWWBBB     B
+B                  BBBBBBBBBWWWBBBB    B
+BB               BBBBBBBBBBBWWWBBBBB   B
+B              BBBBBBBBBBBBBWWWBBBBBB  B
+B           WWWWWWWWWWWWWWWWWWWWWWWWW  B
 B         BBBBBBBBBBBBBBBBBBBBBBBBBBB  B
 BB      BBBBBBBBBBBBBBBBBBBBBBBBBBBBB  B
 BBB                            BBBBBB  B

@@ -8,7 +8,7 @@ phina.globalize();
 var SCREEN_WIDTH = 640;
 var SCREEN_HEIGHT = 960;
 var BOX_SIZE = 32;
-var BTN_AREA_HEIGHT = BOX_SIZE * 6;
+var BTN_AREA_HEIGHT = BOX_SIZE * 8;
 var GRAVITY = 1.8;
 
 var DIRECTION = {
@@ -52,7 +52,7 @@ phina.define('MainScene', {
     this.btnGroup = DisplayElement().addChildTo(this);
     
     // プレイヤー
-    this.player = Player(100, 100, this.shotGroup).addChildTo(this.playerGroup);
+    this.player = Player(100, 100, this.shotGroup, this.btnGroup).addChildTo(this.playerGroup);
 
     // マップ生成
     this.map = Map(this.stageGroup, this.eventGroup, this.enemyGroup, this.shotGroup);
@@ -105,7 +105,7 @@ phina.define('MainScene', {
     stages.children.some(function(stage) {
       shots.children.some(function(shot) {
         if (Collision.testRectRect(stage, shot)) {
-          shot.hitEvent();
+          shot.hitEvent(stage);
           stage.hitShot(shot);
         }
       });
@@ -203,7 +203,7 @@ phina.define('Player', {
   /**
    * 初期化
    */
-  init: function(x, y, shotGroup) {
+  init: function(x, y, shotGroup, btnGroup) {
     this.superInit({
       width: BOX_SIZE / 2,
       height: BOX_SIZE / 2,
@@ -235,9 +235,11 @@ phina.define('Player', {
     this.alphaCount = this.alphaTime;
 
     // 攻撃
-    this.shotCount = 3;
+    this.MAX_SHOT_COUNT = 3;
+    this.shotCount = 0;
     this.shotAngle = 270;
     this.shotGroup = shotGroup;
+    this.btnGroup = btnGroup;
   },
 
   /**
@@ -324,26 +326,12 @@ phina.define('Player', {
 
     // ショットを打つ
     if (this.key.getKey('a')) {
-      this.shotCount++;
-      if (this.shotCount <= 1) {
-        switch (this.direction) {
-          case DIRECTION.RIGHT:
-            this.shotAngle = 0;
-            break;
-          case DIRECTION.UP:
-            this.shotAngle = 90;
-            break;
-          case DIRECTION.DOWN:
-            this.shotAngle = 270;
-            break;
-          case DIRECTION.LEFT:
-            this.shotAngle = 180;
-            break;
-        }
-        Shot(this.x, this.y, this.shotAngle, 30).addChildTo(this.shotGroup);
-      }
+      this.shot();
     } else {
-      this.shotCount = 0;
+      // ショットを打っていない時（キーもattackボタンもみる）
+      if (!this.btnGroup.children[0].attackBtn.isActive) {
+        this.shotCount = 0;
+      }
     }
   },
 
@@ -356,10 +344,39 @@ phina.define('Player', {
   },
 
   /**
+   * 攻撃
+   */
+  shot: function() {
+    if (this.MAX_SHOT_COUNT < this.shotCount) {
+      return false;
+    }
+
+    this.shotCount++;
+    if (this.shotCount <= 1) {
+      switch (this.direction) {
+        case DIRECTION.RIGHT:
+          this.shotAngle = 0;
+          break;
+        case DIRECTION.UP:
+          this.shotAngle = 90;
+          break;
+        case DIRECTION.DOWN:
+          this.shotAngle = 270;
+          break;
+        case DIRECTION.LEFT:
+          this.shotAngle = 180;
+          break;
+      }
+      Shot(this.x, this.y, this.shotAngle, 30).addChildTo(this.shotGroup);
+    }
+  },
+
+  /**
    * イベント処理
    */
   hit: function(event, map) {
-    if (this.key.getKeyDown('up')) {
+    if (this.key.getKeyDown('up') || this.btnGroup.children[0].topBtn.isActive) {
+      this.btnGroup.children[0].topBtn.isActive = false;
       if (event.className == 'Door') {
         this.vx = 0;
         this.vy = 0;
@@ -444,6 +461,7 @@ phina.define('Shot', {
     this.speed = speed;
     this.angle = (angle).toRadian();
     this.hp = 1;
+    this.isThrough = true; // 貫通
   },
 
   /**
@@ -471,9 +489,14 @@ phina.define('Shot', {
   /**
    * イベントとの接触
    */
-  hitEvent: function() {
-    this.remove();
-  }
+  hitEvent: function(block) {
+    if (block.type == 'block') {
+      this.remove();
+    }
+    if (block.type == 'break' && !this.isThrough) {
+      this.remove();
+    }
+  },
 });
 
 
@@ -515,7 +538,7 @@ phina.define('Map', {
     for (var i = 0, iLen = map.length; i < iLen; i++) {
       for (var j = 0, jLen = map[i].length; j < jLen; j++) {
         if (map[i][j] === 'B') {
-          Block('normal', j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
+          Block('block', j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
         }
         if (map[i][j] === 'W') {
           Block('break', j * BOX_SIZE, i * BOX_SIZE).addChildTo(this.stageGroup);
@@ -664,13 +687,19 @@ phina.define('Btn', {
     this.player = player;
 
     // 右ボタン生成
-    this.rightBtn = this.createBtn('right', this.x / 1.6, 0);
+    this.rightBtn = this.createBtn('right', this.x / 1.6, -55);
 
     // 左ボタン生成
-    this.leftBtn = this.createBtn('left', -this.x / 1.6, 0);
+    this.leftBtn = this.createBtn('left', -this.x / 1.6, -55);
 
-    // 真ん中ボタン生成
-    this.centerBtn = this.createBtn('center', 0, 0);
+    // 真ん中上ボタン生成
+    this.topBtn = this.createBtn('top', 0, -50);
+
+    // 真ん中下ボタン生成
+    this.bottomBtn = this.createBtn('bottom', 0, 70);
+
+    // 攻撃ボタン
+    this.attackBtn = this.createBtn('attack', 0, 70);
   },
 
   /**
@@ -680,7 +709,7 @@ phina.define('Btn', {
     // ボタンの影
     var shadowHeight = 10;
     var shadow = RectangleShape({
-      width: (SCREEN_WIDTH - 200) / 3,
+      width: text == 'attack' ? SCREEN_WIDTH - 90 : (SCREEN_WIDTH - 200) / 2.5,
       height: shadowHeight,
       stroke: null,
       fill: '#367ABD'
@@ -688,18 +717,46 @@ phina.define('Btn', {
     
     // ボタン
     var btn = RectangleShape({
-      width: (SCREEN_WIDTH - 200) / 3,
-      height: (BTN_AREA_HEIGHT - shadowHeight) / 1.5,
+      width: text == 'attack' ? SCREEN_WIDTH - 90 : (SCREEN_WIDTH - 200) / 2.5,
+      height: text == 'attack' ? (BTN_AREA_HEIGHT - shadowHeight) / 3.5 : (BTN_AREA_HEIGHT - shadowHeight) / 3,
       stroke: null,
       fill: '#4CB2D4'
     }).addChildTo(this);
 
-    // 三角形
-    this.createTriangle(text, btn);
+    // ボタン内部の装飾
+    if (text == 'attack') {
+      // 攻撃
+      var text = Label({
+        text: 'ATTACK',
+        fill: 'white',
+        fontFamily: "'Righteous', cursive"
+      }).addChildTo(btn);
+    } else {
+      // 三角形
+      this.createTriangle(text, btn);
+    }
 
     // 配置
-    btn.setPosition(x, y - shadowHeight / 2);
-    shadow.setPosition(x, y + btn.height/2);
+    if (text == 'top') {
+      btn.height = btn.height / 2;
+      btn.setPosition(x, (y - shadowHeight / 2) - 25);
+      shadow.setPosition(x, (y + btn.height / 2) - 25);
+    } else if (text == 'bottom') {
+      btn.height = btn.height / 2;
+      btn.setPosition(x, (y - shadowHeight / 2) - 80);
+      shadow.setPosition(x, (y + btn.height / 2) - 80);
+    } else if (text == 'right') {
+      btn.height += 26;
+      btn.setPosition(x - 10, y - shadowHeight / 2 + 12);
+      shadow.setPosition(x - 10, y + btn.height / 2 + 12); 
+    } else if (text == 'left') {
+      btn.height += 26;
+      btn.setPosition(x + 10, y - shadowHeight / 2 + 12);
+      shadow.setPosition(x + 10, y + btn.height / 2 + 12); 
+    } else {
+      btn.setPosition(x, y - shadowHeight / 2);
+      shadow.setPosition(x, y + btn.height / 2); 
+    }
 
     // アニメーション用の位置保存
     var beforeY = btn.y;
@@ -741,8 +798,17 @@ phina.define('Btn', {
       this.player.moveLeft();
     }
 
-    if (this.centerBtn.isActive) {
+    if (this.topBtn.isActive) {
+      this.player.direction = DIRECTION.UP;
       this.player.jump();
+    }
+
+    if (this.bottomBtn.isActive) {
+      this.player.direction = DIRECTION.DOWN;
+    }
+
+    if (this.attackBtn.isActive) {
+      this.player.shot();
     }
   },
 
@@ -751,11 +817,16 @@ phina.define('Btn', {
    */
   createTriangle: function(text, btn) {
     var traiangle = TriangleShape({
-      width: btn.width / 2,
-      height: btn.height / 2,
+      scaleX: 0.8,
+      scaleY: 0.8,
       fill: 'white',
       stroke: null
     }).addChildTo(btn);
+
+    if (text == 'top' || text == 'bottom') {
+      traiangle.scaleX = 0.4;
+      traiangle.scaleY = 0.4;
+    }
 
     // 向き変更
     switch (text) {
@@ -764,6 +835,9 @@ phina.define('Btn', {
         break;
       case 'left':
         traiangle.rotation = 270;
+        break;
+      case 'bottom':
+        traiangle.rotation = 180;
         break;
       default:
         traiangle.rotation = 0;
@@ -790,7 +864,7 @@ phina.define('Block', {
       stroke: null,
     });
     this.type = text;
-    this.MAX_HP = 5;
+    this.MAX_HP = 2;
     this.hp = this.MAX_HP;
 
     switch (text) {
