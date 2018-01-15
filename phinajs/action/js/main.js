@@ -240,7 +240,6 @@ phina.define('Player', {
 
     // 攻撃
     this.shotType = 'shot1';
-    this.MAX_SHOT_COUNT = 3;
     this.shotCount = 0;
     this.shotAngle = 270;
     this.shotGroup = shotGroup;
@@ -352,12 +351,9 @@ phina.define('Player', {
    * 攻撃
    */
   shot: function() {
-    if (this.MAX_SHOT_COUNT < this.shotCount) {
-      return false;
-    }
 
     this.shotCount++;
-    if (this.shotCount <= 1) {
+    if (this.shotCount <= this.getMaxCount(this.shotType)) {
       switch (this.direction) {
         case DIRECTION.RIGHT:
           this.shotAngle = 0;
@@ -372,7 +368,7 @@ phina.define('Player', {
           this.shotAngle = 180;
           break;
       }
-      Shot(this.x, this.y, this.shotAngle, this.shotType).addChildTo(this.shotGroup);
+      Shot(this.x, this.y, this.shotAngle, this.shotType, this.shotGroup);
     }
   },
 
@@ -439,6 +435,39 @@ phina.define('Player', {
   moveRight: function() {
     this.vx += this.speed;
     this.direction = DIRECTION.RIGHT;
+  },
+
+  /**
+   * 連射数
+   */
+  getMaxCount: function(text) {
+      if (text == "shot2") {
+        // 貫通弾
+        return 3;
+
+      } else if (text == "shot3") {
+        // レーザー弾
+        return 1;
+
+      } else if (text == "shot4") {
+        // ソード弾
+        return 1;
+
+      } else if (text == "shot5") {
+        // 置弾
+        return 1;
+      
+      } else if (text == "shot6") {
+        // 周囲弾
+        return 10;
+      
+      } else if (text == "shot7") {
+        // 神弾
+        return 1;
+
+      } else {
+        return 1;
+      }
   }
 });
 
@@ -452,7 +481,7 @@ phina.define('Shot', {
   /**
    * 初期化
    */
-  init: function(x, y, angle, type) {
+  init: function(x, y, angle, type, shotGroup) {
     this.superInit({
       fill: 'pink',
       stroke: null,
@@ -461,10 +490,12 @@ phina.define('Shot', {
       x: x,
       y: y
     });
+    this.shotGroup = shotGroup;
     this.type = type;
     this.angle = (angle).toRadian();
     this.isBlockThrough = false;
     this.isEnemyThrough = false;
+    this.MAX_COUNT = 5;
     this.hp = 10;
 
     // タイプ
@@ -479,6 +510,7 @@ phina.define('Shot', {
         this.width = 10;
         this.height = 10;
         this.hp = 20;
+        this.MAX_COUNT = 3;
         break;
 
       // レーザー弾
@@ -488,6 +520,7 @@ phina.define('Shot', {
         this.isThrough = true;
         this.fill = 'blue';
         this.hp = 999999999;
+        this.MAX_COUNT = 1;
 
         var offset = 20;
         if (angle == 0 || angle == 180) {
@@ -514,13 +547,14 @@ phina.define('Shot', {
 
       // ソード弾
       case "shot4":
-        this.power = 30;
+        this.power = 100;
         this.speed = 10;
         this.isThrough = true;
         this.isBlockThrough = true;
         this.isEnemyThrough = true;
         this.fill = '#ccc';
         this.hp = 3;
+        this.MAX_COUNT = 1;
 
         var offset = BOX_SIZE / 1.5;
         if (angle == 0 || angle == 180) {
@@ -547,7 +581,7 @@ phina.define('Shot', {
 
       // 置弾
       case "shot5":
-        this.power = 30;
+        this.power = 3;
         this.speed = 2;
         this.width = 100;
         this.height = 100;
@@ -556,11 +590,12 @@ phina.define('Shot', {
         this.isEnemyThrough = true;
         this.fill = 'purple';
         this.hp = 200;
+        this.MAX_COUNT = 3;
         break;
       
       // 周囲弾
       case "shot6":
-        this.power = 3;
+        this.power = 30;
         this.speed = 0;
         this.width = 50;
         this.height = 50;
@@ -570,8 +605,10 @@ phina.define('Shot', {
         this.isBlockThrough = true;
         this.isEnemyThrough = true;
         this.fill = null;
-        this.cornerRadius = 20;
+        this.cornerRadius = 24;
         this.hp = 10;
+        this.MAX_COUNT = 10;
+
         this.tweener.clear()
         .to({
           scaleX: 2,
@@ -591,6 +628,7 @@ phina.define('Shot', {
         this.width = 50;
         this.height = 200;
         this.angle = (90).toRadian();
+        this.MAX_COUNT = 1;
         break;
     
       // 通常弾
@@ -601,6 +639,14 @@ phina.define('Shot', {
         this.fill = 'pink';
         this.width = 10;
         this.height = 10;
+    }
+
+    if (this.MAX_COUNT-1 < this.shotGroup.children.length) {
+      // 最大弾数を超えていたら発射しない
+      return false;
+    } else {
+      // それ以外は発射
+      this.addChildTo(this.shotGroup);
     }
   },
 
@@ -645,7 +691,7 @@ phina.define('Shot', {
     if (block.type == 'break' && !this.isThrough) {
       this.remove();
     }
-  },
+  }
 });
 
 
