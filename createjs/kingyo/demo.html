@@ -1,0 +1,91 @@
+
+<!DOCTYPE HTML>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title></title>
+<link href='https://fonts.googleapis.com/css?family=Oswald:700' rel='stylesheet' type='text/css'>
+<link href="base.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+
+<div id="stage">
+  <div id="start"><img src="img/btn_start.png"></div>
+  <button class="mushi"></button>
+</div>
+<div id="text">
+  <div id="count">COUNT:<span>30</span></div>
+  <div id="score">SCORE:<span>0</span></div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script src="jQueryRotate.js"></script>
+<script type="text/javascript">
+
+var score = 0;  //スコアの点数格納用
+var count = 30;  //残り秒数
+var bornID,timer;  //setInterval用
+
+//配置位置をランダムに取得
+function getPosition(){
+  return {
+    left: Math.floor(Math.random() * 500),  //0～500の整数をランダムで取得
+    top: Math.floor(Math.random() * 400)  //0～400の整数をランダムで取得
+  };
+}
+
+//コバエの角度設定
+function kakudo(){
+  return Math.floor(Math.random() * 360);
+}
+
+//コバエ増殖の処理
+function born(){
+  bornID = setInterval(function(){
+    $('.mushi:first-child')
+    .clone()  //button.mushiの複製
+    .appendTo('#stage')  //複製したbutton.mushiを#stageの最後の要素として追加
+    .css(getPosition())  //追加したbutton.mushiを横500px縦400pxの中にランダム配置
+    .animate({ opacity: 1}, 2000)  //.mushiの透明度を2秒で0から1へ
+    .animate(getPosition(), 7000)  //.mushiを7秒かけてランダムな位置へ移動させる
+    .rotate(kakudo())  //.mushiにランダムな角度をつける
+  }, 500);   //500ミリ秒（0.5秒）毎にsetInterval内の処理を繰り返す
+};
+
+//叩いた時の処理
+$('#stage').on('click', '.mushi', function() {
+  $(this)
+  .css('background-position', 'bottom')  //画像を叩かれているものに切り替え
+  .prop("disabled", true)  //ボタンのクリック無効化
+  .stop(true,false).animate({ opacity: 0}, 500, function(){  //.mushiの透明度を0.5秒で1から0へ
+    $(this).remove();  //アニメーションが終了したら.mushiを削除
+  });
+  score += 100;  //scoreの変数に100を加算
+  $('#score span').text(score);  //変数scoreの中身を#score spanに表示させる
+});
+
+//スタートボタン押下時の処理
+$('#start').click(function(){
+  born();  //.mushi増殖関数スタート
+  $(this).animate({ opacity: 0}, 300, function(){  //スタートボタンを透明に
+    $(this).remove();  //透明になったらスタートボタンを削除
+  });
+  timer = setInterval(function(){  //残り時間のカウントダウンの処理
+   if(count <= 0) {  //残り時間0になったら
+      //残り秒数が0以下になったらタイマー（setInterval）をクリアー
+      clearInterval(timer);  //カウントダウンのタイマーをクリアー
+      clearInterval(bornID);  //.mushi増殖のタイマーをクリアー
+      $('.mushi').prop("disabled", true);  //全ての.mushiのクリックを無効に
+      alert("スコアは" + score + "です！")  //スコアをアラートで表示
+   } else {  //残り時間1以上であれば
+     count --;  //countの変数を1減らす
+     $('#count span').text(count);  //変数countの中身を#count spanに表示させる
+      //残り秒数が1以上あれば1減らす
+   }
+  }, 1000);   //1000ミリ秒（1秒）毎にsetInterval内の処理を繰り返す
+});
+
+
+</script>
+</body>
+</html>
