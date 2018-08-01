@@ -1,0 +1,47 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.game-wrapper {
+  position: relative;
+  height: 0;
+  overflow: hidden;
+  padding-top: 177.7777777778%;
+}
+.game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: black;
+}
+.game-info {
+  width: 200px;
+  height: 200px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  background-color: white;
+  padding: 20px;
+  transition: 0.3s;
+  transform: translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+}
+.game-info.active {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: inherit;
+}
+.game-btn {
+  text-align: center;
+  background-color: blue;
+  color: white;
+  padding: 10px;
+}

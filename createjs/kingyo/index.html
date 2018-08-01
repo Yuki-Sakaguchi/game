@@ -5,26 +5,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>金魚すくい</title>
-    <style>
-      canvas#game {
-          display: block;
-          width: 960px;
-          height: 540px;
-          background-color: black;
-          margin: auto;
-      }
-    </style>
+    <link rel="stylesheet" href="/css/game.css">
+  </head>
+  <body>
+    <div class="game-wrapper">
+      <canvas class="game-canvas" id="game"></canvas>
+      <div class="game-info js-info">
+          <p>ゲームの説明が入りますゲームの説明が入りますゲームの説明が入りますゲームの説明が入ります</p>
+          <div class="game-btn js-btn">GAME START</div>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
     <script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
     <script src="./js/game.js"></script>
     <script>
-      // ゲームを開始
-      window.addEventListener('load', function() {
-        var game = new Game();
+      var game;
+      var activeClass = 'active';
+      var $btn = $('.js-btn');
+      var $info = $('.js-info');
+
+      // ゲームスタート
+      $btn.on('click', function() {
+        $info.removeClass(activeClass);
         game.play();
       });
+
+      // ゲーム初期化
+      $(window).on('load', function() {
+          // デフォルトの金魚リスト
+          var targetList = [
+            {
+              color: 'red',
+              point: 20,
+              speed: 200,
+              life: 300,
+              par: 60
+            },
+            {
+              color: 'blue',
+              point: 50,
+              speed: 400,
+              life: 100,
+              par: 20
+            },
+            {
+              color: 'pink',
+              point: -20,
+              speed: 200,
+              life: 300,
+              par: 20
+            },
+            {
+              color: 'yellow',
+              point: 1000,
+              speed: 200,
+              life: 100,
+              par: 5
+            }
+          ];
+
+        game = new Game({
+          autoPlay: false,
+          targetList: targetList
+        });
+        $info.addClass(activeClass);
+      });
     </script>
-  </head>
-  <body>
-    <canvas id="game" width="960" height="540"></canvas>
   </body>
 </html>

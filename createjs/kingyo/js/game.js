@@ -11,42 +11,18 @@
  */
 
 var Game = function(options) {
-  // デフォルトの金魚リスト
-  var targetList = [
-    {
-      color: 'red',
-      point: 20,
-      speed: 200,
-      life: 300,
-      par: 60
-    },
-    {
-      color: 'blue',
-      point: 50,
-      speed: 400,
-      life: 100,
-      par: 20
-    },
-    {
-      color: 'pink',
-      point: -20,
-      speed: 200,
-      life: 300,
-      par: 20
-    },
-    {
-      color: 'yellow',
-      point: 1000,
-      speed: 200,
-      life: 100,
-      par: 5
-    }
-  ];
 
   // デフォルトのオプション
   this.options = {
     selector: 'game',
-    targetList: targetList,
+    autoPlay: true,
+    targetList: {
+      color: 'red',
+      point: 100,
+      speed: 200,
+      life: 300,
+      par: 60
+    }
   };
 
   // オプションの上書き
@@ -63,7 +39,7 @@ Game.prototype.setOption = function(options) {
   if (options) {
     Object.keys(options).forEach(function(key) {
       this.options[key] = options[key];
-    }.this(this));
+    }.bind(this));
   }
 };
 
@@ -73,131 +49,187 @@ Game.prototype.setOption = function(options) {
 Game.prototype.init = function() {
   console.log('init');
 
-  // ステージ作成
-  this.stage = new createjs.Stage(this.options.selector);
+  // canvasサイズの設定
+  this.canvas = document.querySelector('#' + this.options.selector);
+  this.canvas.width = window.innerWidth;
+  this.canvas.height = window.innerHeight;
 
+  // FPS
+  createjs.Ticker.timingMode = createjs.Ticker.RAF;
+
+  // 自動再生がonの場合は初期化後にすぐプレイ
+  if (this.options.autoPlay) {
+    this.play();
+  }
+};
+
+/**
+ * ゲーム開始
+/**
+ *
+ *
+ */
+Game.prototype.play = function() {
+  console.log('play');
+
+  var self = this;
+
+  // ステージ作成
+  var stage = new createjs.Stage(this.options.selector);
+
+  // 金魚ガチャ
   var targetList = new Gacha(this.options.targetList);
 
-  var particles = [];
+  // 魚のリスト
+  var fishList = [];
 
+  // 更新された回数
+  var tickCount = 0;
+
+  // 魚を生成する数
+  var MAX_COUNT = 1;
+
+  // スコアの位置
+  var scoreY = this.canvas.height - 40;
+
+  // タッチ操作も可能にする(iOS,Android向け)
+  if (createjs.Touch.isSupported()) {
+    createjs.Touch.enable(stage);
+  }
+
+  // ポイント表示
   var point = 0;
-  var pointText = new createjs.Text(point, "24px sans-serif", "white");
-  pointText.x = 20;
-  pointText.y = 20;
-  this.stage.addChild(pointText);
+  var fontStyle = "16px sans-serif";
+  var fontColor = "white";
+  var pointTitle = new createjs.Text('SCORE', fontStyle, fontColor);
+  pointTitle.x = 20;
+  pointTitle.y = scoreY;
+  stage.addChild(pointTitle);
+  var pointText = new createjs.Text(point, fontStyle, fontColor);
+  pointText.x = 120;
+  pointText.y = scoreY;
+  stage.addChild(pointText);
 
+  // タイマー
   var timer = 30;
-  var timerText = new createjs.Text(timer, "24px sans-serif", "white");
-  timerText.x = 20;
-  timerText.y = 50;
-  this.stage.addChild(timerText);
+  var timerTitle = new createjs.Text('TIME', fontStyle, fontColor);
+  timerTitle.x = (this.canvas.width/2) + 20;
+  timerTitle.y = scoreY;
+  stage.addChild(timerTitle);
+  var timerText = new createjs.Text(timer, fontStyle, fontColor);
+  timerText.x = (this.canvas.width/2) + 120;
+  timerText.y = scoreY;
+  stage.addChild(timerText);
 
-  var gameTImer = setInterval(function() {
-    timer -= 1;
+  // 時間制限をスタート
+  var gameTimer = setInterval(function() {
+    timer--;
     timerText.text = timer;
-    this.stage.addChild(timerText);
-
-    if (timer <= 0) {
-      clearInterval(gameTImer);
+    stage.addChild(timerText);
+    if (timer < 0) {
+      clearInterval(gameTimer);
       if (point >= 500) {
         alert('GAME CLEAR -> [' + point + ']');
       } else {
         alert('GAME OVER -> [' + point + ']');
       }
       createjs.Ticker.removeAllEventListeners();
-      this.stage.removeAllEventListeners();
+      stage.removeAllEventListeners();
     }
   }.bind(this), 1000);
 
-  // タッチ操作も可能にする(iOS,Android向け)
-  if (createjs.Touch.isSupported()) {
-    createjs.Touch.enable(this.stage);
-  }
-
-  // tick イベントの登録
-  createjs.Ticker.timingMode = createjs.Ticker.RAF;
-
-  // 更新
-  createjs.Ticker.addEventListener("tick", function(e) {
-    handleTick.call(this, e);
-  }.bind(this));
-
-  var count = 0;
+  /**
+   * 画面更新
+   */
   function handleTick(event) {
-    // パーティクルを発生
-
-    count++;
-    
-    if (count % 30 == 0) {
-      emitParticles.call(this);
+    // 時間を追加
+    tickCount++;
+  
+    // 一定の時間ごとに金魚を生成
+    if (tickCount % 30 == 0) {
+      emitfishList();
     }
 
     // パーティクルを更新
-    updateParticles.call(this);
+    updatefishList();
 
     // 画面を更新する
-    this.stage.update();
+    stage.update();
   }
 
-  var count = 0; // tick イベントの回数
-  var MAX_COUNT = 1;
-
-  // パーティクルを発生させます
-  function emitParticles() {
+  /**
+   * 金魚を生成
+   */
+  function emitfishList() {
     // パーティクルの生成
     for (var i = 0; i < MAX_COUNT; i++) {
-      // カウントの更新
-      count += 1;
-
       // 金魚の情報を設定
       var info = targetList.gacha();
 
       // オブジェクトの作成
-      var particle = new createjs.Shape();
-      particle.graphics
-              .beginFill(info.color)
-              .drawCircle(0, 0, 30);
+      var fish = new createjs.Shape();
+      fish.graphics
+          .beginFill(info.color)
+          .drawCircle(0, 0, 30);
 
-      particle.life = info.life;
-      particle.point = info.point;
-      particle.speed = info.speed;
-              
-      this.stage.addChild(particle);
-      particle.compositeOperation = "lighter";
+      // 金魚にデータを追加
+      var offset = 20;
+      fish.life = info.life;
+      fish.point = info.point;
+      fish.speed = info.speed;
+      fish.compositeOperation = "lighter";
+      fish.x = self.random(offset, window.innerWidth - offset);
+      fish.y = self.random(offset, window.innerHeight - offset);
+      stage.addChild(fish);
 
-      // パーティクルの発生場所
-      particle.x = this.random(200, 760);
-      particle.y = this.random(200, 340);
-      
-      // 動的にプロパティーを追加します。
-      // 速度
-      // particle.vx = 5 * (Math.random() - 0.5);
-      // particle.vy = 5 * (Math.random() - 0.5);
-      // particle.vx = 0;
-      // particle.vy = 1;
+      // 金魚の移動
+      createjs.Tween.get(fish)
+      .to({
+        x: fish.x + (fish.speed * (Math.random() - 0.5)),
+        y: fish.y + (fish.speed * (Math.random() - 0.5)),
+      }, 1000)
+      .to({
+        x: fish.x + (fish.speed * (Math.random() - 0.5)),
+        y: fish.y + (fish.speed * (Math.random() - 0.5)),
+      }, 1000)
+      .to({
+        x: fish.x + (fish.speed * (Math.random() - 0.5)),
+        y: fish.y + (fish.speed * (Math.random() - 0.5)),
+      }, 1000)
+      .to({
+        x: fish.x + (fish.speed * (Math.random() - 0.5)),
+        y: fish.y + (fish.speed * (Math.random() - 0.5)),
+      }, 1000)
+      .call(function() {
+        stage.removeChild(fish);
+      });
 
-      var textColor;
-      if (particle.point < 0) {
-        textColor = "red";
-      } else {
-        textColor = "white";
-      }
+      // 金魚をクリックした時
+      fish.on('click', function() {
+        // ポイントを追加
+        point += this.point;
+        pointText.text = point;
+        stage.addChild(pointText);
 
-      particle.on('click', function() {
+        // 取得したポイントを表示
+        var textColor = 'white';
+        if (this.point < 0) {
+          textColor = "red";
+        }
+
+        // ポイントのテキスト
         var t = new createjs.Text(this.point, "24px sans-serif", textColor);
         t.x = this.x;
         t.y = this.y;
         t.textAlign = "center";
         t.textBaseline = "bottom";
-        this.stage.addChild(t);
+        stage.addChild(t);
 
+        // 金魚の位置を取得
         var x = this.x;
         var y = this.y;
 
-        point += this.point;
-        pointText.text = point;
-        this.stage.addChild(pointText);
-
+        // テキストを上に移動させながら消す
         createjs.Tween.get(t)
         .to({
           x: x,
@@ -205,79 +237,48 @@ Game.prototype.init = function() {
           alpha: 0
         }, 1000)
         .call(function() {
-          this.stage.removeChild(this);
+          stage.removeChild(t);
         });
 
-        this.stage.removeChild(this);
+        // 金魚自体を削除
+        stage.removeChild(this);
+
         // 配列からも削除
-        particles.splice(i, 1);
+        for (var j = 0; j < fishList.length; j++) {
+          if (this == fishList[j]) {
+            fishList.splice(j, 1);
+          }
+        }
       });
 
-      // パーティクルの移動
-      createjs.Tween.get(particle)
-      .to({
-        x: particle.x + (particle.speed * (Math.random() - 0.5)),
-        y: particle.y + (particle.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .to({
-        x: particle.x + (particle.speed * (Math.random() - 0.5)),
-        y: particle.y + (particle.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .to({
-        x: particle.x + (particle.speed * (Math.random() - 0.5)),
-        y: particle.y + (particle.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .to({
-        x: particle.x + (particle.speed * (Math.random() - 0.5)),
-        y: particle.y + (particle.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .call(function() {
-        this.stage.removeChild(particle);
-      }.bind(this));
-
-      particles.push(particle);
+      fishList.push(fish);
     }
   }
-
-  // パーティクルを更新します
-  function updateParticles() {
+  
+  /**
+   * 魚を更新
+   */
+  function updatefishList() {
     // パーティクルの計算を行う
-    for (var i = 0; i < particles.length; i++) {
+    for (var i = 0; i < fishList.length; i++) {
       // オブジェクトの作成
-      var particle = particles[i];
-
-      // // 重力
-      // particle.vy += 1;
-      
-      // 摩擦
-      // particle.vx *= 0.99;
-      // particle.vy *= 0.99;
-
-      // 速度を位置に適用
-      // particle.x += particle.vx;
-      // particle.y += particle.vy;
-
-      // 地面
-      // if (particle.y > this.stage.canvas.height) {
-      //   particle.y = this.stage.canvas.height; // 行き過ぎ補正
-      //   particle.vy *= -1; // Y軸の速度を反転
-      // }
-
-      // パーティクルのサイズをライフ依存にする
-      // var scale = particle.life / MAX_LIFE;
-      // particle.scaleX = particle.scaleY = scale;
-      
+      var fish = fishList[i];
+     
       // 寿命を減らす
-      particle.life -= 1;
+      fish.life -= 1;
+
       // 寿命の判定
-      if (particle.life <= 0) {
+      if (fish.life <= 0) {
         // ステージから削除
-        this.stage.removeChild(particle);
+        stage.removeChild(fish);
         // 配列からも削除
-        particles.splice(i, 1);
+        fishList.splice(i, 1);
       }
     }
   }
+
+  // 更新の実行
+  createjs.Ticker.addEventListener("tick", handleTick);
 };
 
 /**
@@ -288,22 +289,7 @@ Game.prototype.random = function(min, max) {
 };
 
 /**
- * ゲーム開始
- */
-Game.prototype.play = function() {
-  console.log('play');
-};
-
-
-
-/**
  * ガチャガチャ機能を有する変数（クラス）
- * 引数　gachalist(アイテム名と重みの多重配列）
- * 例） スライム１０匹に対してはぐれメタルが１匹程度の割合
- *       [
- *        ['スライム', 10],
- *        ['はぐれメタル', 1]
- *       ] 
  */
 var Gacha = function(gachalist) {
 	//thisを扱い易くするために変数に保存
