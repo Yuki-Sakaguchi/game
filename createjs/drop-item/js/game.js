@@ -16,7 +16,7 @@ var Player = (function() {
     container.addChild(shape);
 
     var ss = new createjs.SpriteSheet({
-      images: ['/drop-item/images/player.png'],
+      images: ['/createjs/drop-item/images/player.png'],
       frames: [
         [0, 0, 500, 500, 0, 0, 0], // x, y, width, height, imageIndex*, regX*, regY*
         [0, 500, 500, 500, 0, 0, 0],
