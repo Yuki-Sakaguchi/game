@@ -2,6 +2,7 @@
 
 ## createjs
 ### DEMO
+https://yuki-sakaguchi.github.io/game/createjs/drop-item/index.html  
 https://yuki-sakaguchi.github.io/game/createjs/shooting-sample/index.html  
 https://yuki-sakaguchi.github.io/game/createjs/kingyo/index.html
 
