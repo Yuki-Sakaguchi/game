@@ -183,26 +183,35 @@ Game.prototype.play = function() {
       stage.addChild(fish);
 
       // 金魚の移動
-      createjs.Tween.get(fish)
-      .to({
-        x: fish.x + (fish.speed * (Math.random() - 0.5)),
-        y: fish.y + (fish.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .to({
-        x: fish.x + (fish.speed * (Math.random() - 0.5)),
-        y: fish.y + (fish.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .to({
-        x: fish.x + (fish.speed * (Math.random() - 0.5)),
-        y: fish.y + (fish.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .to({
-        x: fish.x + (fish.speed * (Math.random() - 0.5)),
-        y: fish.y + (fish.speed * (Math.random() - 0.5)),
-      }, 1000)
-      .call(function() {
-        stage.removeChild(fish);
-      });
+      (function() {
+        var tmpX = [
+          (fish.speed * (Math.random() - 0.5)),
+          (fish.speed * (Math.random() - 0.5)),
+          (fish.speed * (Math.random() - 0.5)),
+          (fish.speed * (Math.random() - 0.5))
+        ];
+
+        createjs.Tween.get(fish)
+        .to({
+          x: fish.x + tmpX[0],
+          y: fish.y + (fish.speed * (Math.random() - 0.5)),
+        }, 1000)
+        .to({
+          x: fish.x + tmpX[1],
+          y: fish.y + (fish.speed * (Math.random() - 0.5)),
+        }, 1000)
+        .to({
+          x: fish.x + tmpX[2],
+          y: fish.y + (fish.speed * (Math.random() - 0.5)),
+        }, 1000)
+        .to({
+          x: fish.x + tmpX[3],
+          y: fish.y + (fish.speed * (Math.random() - 0.5)),
+        }, 1000)
+        .call(function() {
+          stage.removeChild(fish);
+        });
+      })();
 
       // 金魚をクリックした時
       fish.on('click', function() {
